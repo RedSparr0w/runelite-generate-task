@@ -15,7 +15,7 @@
 		},
 		{
 			"id": "11968c49-8398-4125-826c-829dfe85b0b2",
-			"name": "Get a Mole claw + skin",
+			"name": "Get a Mole claw + Mole skin",
 			"tip": "Mole Skin and Mole Claw are guarenteed drops from the Giant Mole Boss.",
 			"wikiLink": "https://oldschool.runescape.wiki/w/Giant_Mole",
 			"imageLink": "https://oldschool.runescape.wiki/images/d/d8/Mole_claw.png",
@@ -2268,7 +2268,7 @@
 	"medium": [
 		{
 			"id": "d4f8608e-9aaf-4377-9423-5ce5b3d62c63",
-			"name": "Get 1 unique from Barrows TEST",
+			"name": "Get 1 unique from Barrows",
 			"tip": "Can be received as a reward from the Barrows Combat Minigame.",
 			"wikiLink": "https://oldschool.runescape.wiki/w/Barrows",
 			"imageLink": "https://oldschool.runescape.wiki/images/1/10/Guthan%27s_helm.png",
