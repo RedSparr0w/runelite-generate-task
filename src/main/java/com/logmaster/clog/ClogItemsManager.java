@@ -1,25 +1,23 @@
 package com.logmaster.clog;
 
-import net.runelite.client.callback.ClientThread;
+import com.logmaster.LogMasterPlugin;
+import com.logmaster.diary.AchievementDiaryManager;
+import com.logmaster.domain.Task;
+import com.logmaster.domain.TaskTier;
+import com.logmaster.domain.verification.CollectionLogVerification;
+import com.logmaster.task.TaskService;
+import com.logmaster.ui.InterfaceManager;
+import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Client;
 import net.runelite.api.EnumComposition;
 import net.runelite.api.MenuAction;
-
-import lombok.extern.slf4j.Slf4j;
-
-import com.logmaster.LogMasterPlugin;
-import com.logmaster.domain.Task;
-import com.logmaster.domain.TaskTier;
-import com.logmaster.task.TaskService;
-import com.logmaster.ui.InterfaceManager;
-import com.logmaster.diary.AchievementDiaryManager;
-
 import net.runelite.api.events.ScriptPreFired;
+import net.runelite.client.callback.ClientThread;
 
+import javax.inject.Inject;
 import java.util.HashSet;
 import java.util.Timer;
 import java.util.TimerTask;
-import javax.inject.Inject;
 
 @Slf4j
 public class ClogItemsManager {
@@ -131,34 +129,34 @@ public class ClogItemsManager {
         // Update completed tasks automatically
         for (TaskTier tier : TaskTier.values()) {
             for (Task task : taskService.getTaskList().getForTier(tier)) {
-                // Only process tasks that use collection-log verification method
-                if (!task.getVerificationMethod().equals("collection-log")) {
+                if (!(task.getVerification() instanceof CollectionLogVerification)) {
                     continue;
                 }
 
-                int[] check = task.getItemIds();
-                Integer taskCount = task.getCount();
-                if (check == null || taskCount == null) {
+                CollectionLogVerification verif = (CollectionLogVerification) task.getVerification();
+                int[] check = verif.getItemIds();
+                int taskCount = verif.getCount();
+
+                if (check.length == 0) {
                     continue;
                 }
-                if (check.length > 0) {
-                    int count = 0;
-                    for (int itemId : check) {
-                        if (isCollectionLogItemUnlocked(itemId)) {
-                            count++;
-                        }
+
+                int count = 0;
+                for (int itemId : check) {
+                    if (isCollectionLogItemUnlocked(itemId)) {
+                        count++;
                     }
-                    if (count >= taskCount && !plugin.isTaskCompleted(task.getId(), tier)) {
-                        // Check passed, task not yet completed, mark as completed
-                        plugin.completeTask(task.getId(), tier, false);
-                        client.addChatMessage(net.runelite.api.ChatMessageType.GAMEMESSAGE, "", tier.displayName + " tier task '" + task.getName() + "' marked as <col=27ae60>completed.</col>", null);
-                        log.debug("Task '{}' marked as completed for tier {}", task.getName(), tier.displayName);
-                    } else if (count < taskCount && plugin.isTaskCompleted(task.getId(), tier)) {
-                        // Check failed, task marked as completed, unmark completion
-                        plugin.completeTask(task.getId(), tier, false);
-                        client.addChatMessage(net.runelite.api.ChatMessageType.GAMEMESSAGE, "", tier.displayName + " tier task '" + task.getName() + "' marked as <col=c0392b>incomplete.</col>", null);
-                        log.debug("Task '{}' un-marked as this is not completed for tier {}", task.getName(), tier.displayName);
-                    }
+                }
+                if (count >= taskCount && !plugin.isTaskCompleted(task.getId(), tier)) {
+                    // Check passed, task not yet completed, mark as completed
+                    plugin.completeTask(task.getId(), tier, false);
+                    client.addChatMessage(net.runelite.api.ChatMessageType.GAMEMESSAGE, "", tier.displayName + " tier task '" + task.getName() + "' marked as <col=27ae60>completed.</col>", null);
+                    log.debug("Task '{}' marked as completed for tier {}", task.getName(), tier.displayName);
+                } else if (count < taskCount && plugin.isTaskCompleted(task.getId(), tier)) {
+                    // Check failed, task marked as completed, unmark completion
+                    plugin.completeTask(task.getId(), tier, false);
+                    client.addChatMessage(net.runelite.api.ChatMessageType.GAMEMESSAGE, "", tier.displayName + " tier task '" + task.getName() + "' marked as <col=c0392b>incomplete.</col>", null);
+                    log.debug("Task '{}' un-marked as this is not completed for tier {}", task.getName(), tier.displayName);
                 }
             }
         }

@@ -1,14 +1,14 @@
 package com.logmaster.diary;
 
-import net.runelite.api.Client;
-import net.runelite.api.VarbitComposition;
-import net.runelite.api.ChatMessageType;
-import lombok.extern.slf4j.Slf4j;
-
 import com.logmaster.LogMasterPlugin;
 import com.logmaster.domain.Task;
 import com.logmaster.domain.TaskTier;
+import com.logmaster.domain.verification.AchievementDiaryVerification;
 import com.logmaster.task.TaskService;
+import lombok.extern.slf4j.Slf4j;
+import net.runelite.api.ChatMessageType;
+import net.runelite.api.Client;
+import net.runelite.api.VarbitComposition;
 
 import javax.inject.Inject;
 
@@ -58,17 +58,14 @@ public class AchievementDiaryManager {
         // Check all tasks across all tiers for achievement diary verification
         for (TaskTier tier : TaskTier.values()) {
             for (Task task : taskService.getTaskList().getForTier(tier)) {
-                // Only process tasks that use achievement-diary verification method
-                if (!task.getVerificationMethod().equals("achievement-diary")) {
+                if (!(task.getVerification() instanceof AchievementDiaryVerification)) {
                     continue;
                 }
 
-                String achievementRegion = task.getRegion();
-                String achievementDifficulty = task.getDifficulty();
-                if (achievementRegion == null || achievementDifficulty == null) {
-                    log.warn("Task '{}' has achievement-diary verification but no area/tier specified", task.getName());
-                    continue;
-                }
+                AchievementDiaryVerification verif = (AchievementDiaryVerification) task.getVerification();
+
+                String achievementRegion = verif.getRegion();
+                String achievementDifficulty = verif.getDifficulty();
 
                 boolean isDiaryCompleted = isAchievementDiaryCompleted(achievementRegion, achievementDifficulty);
                 boolean isTaskCompleted = plugin.isTaskCompleted(task.getId(), tier);

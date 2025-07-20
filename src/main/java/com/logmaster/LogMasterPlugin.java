@@ -5,9 +5,7 @@ import com.logmaster.clog.ClogItemsManager;
 import com.logmaster.domain.Task;
 import com.logmaster.domain.TaskPointer;
 import com.logmaster.domain.TaskTier;
-import com.logmaster.domain.verification.AchievementDiaryVerification;
 import com.logmaster.domain.verification.CollectionLogVerification;
-import com.logmaster.domain.verification.Verification;
 import com.logmaster.persistence.SaveDataManager;
 import com.logmaster.task.TaskService;
 import com.logmaster.ui.InterfaceManager;
@@ -32,15 +30,9 @@ import net.runelite.client.ui.overlay.OverlayManager;
 import net.runelite.client.util.LinkBrowser;
 
 import javax.inject.Inject;
-
-import java.util.Comparator;
-import java.util.List;
-import java.util.Map;
-import java.util.Timer;
-import java.util.TimerTask;
+import java.util.*;
 import java.util.stream.Collectors;
-
-import static com.logmaster.util.GsonOverride.GSON;
+import java.util.stream.Stream;
 
 @Slf4j
 @PluginDescriptor(name = "Collection Log Master")
@@ -83,23 +75,6 @@ public class LogMasterPlugin extends Plugin {
 	@Override
 	protected void startUp()
 	{
-		String diaryJson = "{\"method\":\"achievement-diary\",\"region\":\"ardougne\",\"difficulty\":\"easy\"}";
-		Verification verif = GSON.fromJson(diaryJson, Verification.class);
-
-		if (verif instanceof AchievementDiaryVerification) {
-			AchievementDiaryVerification diaryVerif = (AchievementDiaryVerification) verif;
-			log.info("{}", diaryVerif.getRegion());
-		}
-
-		String clogJson = "{\"method\":\"collection-log\",\"itemIds\":[123],\"count\":1}";
-		Verification verif2 = GSON.fromJson(clogJson, Verification.class);
-
-		if (verif2 instanceof CollectionLogVerification) {
-			CollectionLogVerification clogVerif = (CollectionLogVerification) verif2;
-			log.info("{}", clogVerif.getItemIds());
-		}
-
-
 		mouseManager.registerMouseWheelListener(interfaceManager);
 		mouseManager.registerMouseListener(interfaceManager);
 		interfaceManager.initialise();
@@ -196,16 +171,7 @@ public class LogMasterPlugin extends Plugin {
 			return;
 		}
 
-		// Select a random task from the available tasks
-		int index = (int) Math.floor(Math.random()*uniqueTasks.size());
-		// If there are multiple tasks with the same name, select the one with the lowest count
-		String selectedTaskName = uniqueTasks.get(index).getName();
-		Task selectedTask = uniqueTasks.stream()
-			.filter(task -> task.getName().equals(selectedTaskName))
-			.collect(Collectors.toList()).stream()
-			.min(Comparator.comparingInt(Task::getCount))
-			.orElse(uniqueTasks.get(index));
-
+		Task selectedTask = pickRandomTask(uniqueTasks);
 		TaskPointer newTaskPointer = new TaskPointer();
 		newTaskPointer.setTask(selectedTask);
 		newTaskPointer.setTaskTier(getCurrentTier());
@@ -215,6 +181,25 @@ public class LogMasterPlugin extends Plugin {
 		log.debug("Task generated: {} - {}", newTaskPointer.getTask().getName(), newTaskPointer.getTask().getId());
 
 		this.saveDataManager.save();
+	}
+
+	private static Task pickRandomTask(List<Task> uniqueTasks) {
+		int index = (int) Math.floor(Math.random() * uniqueTasks.size());
+		Task task = uniqueTasks.get(index);
+
+		if (!(task.getVerification() instanceof CollectionLogVerification)) {
+			return task;
+		}
+
+		// get first of similarly named tasks
+		String taskName = task.getName();
+		Stream<Task> similarTasks = uniqueTasks.stream()
+				.filter(t -> taskName.equals(t.getName()))
+				.filter(t -> t.getVerification() instanceof CollectionLogVerification);
+
+		return similarTasks.min(Comparator.comparingInt(
+			t -> ((CollectionLogVerification) t.getVerification()).getCount()
+		)).orElse(task);
 	}
 
 	public void completeTask() {

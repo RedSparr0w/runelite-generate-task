@@ -4,6 +4,7 @@ import com.logmaster.LogMasterConfig;
 import com.logmaster.LogMasterPlugin;
 import com.logmaster.domain.Task;
 import com.logmaster.domain.TaskTier;
+import com.logmaster.domain.verification.CollectionLogVerification;
 import com.logmaster.persistence.SaveDataManager;
 import com.logmaster.task.TaskService;
 import com.logmaster.ui.generic.UIButton;
@@ -208,40 +209,7 @@ public class TaskList extends UIPage {
                 taskBg.setSize(TASK_WIDTH, TASK_HEIGHT);
                 taskBg.setPosition(taskX, taskY);
                 taskBg.getWidget().setPos(taskX, taskY);
-                taskBg.getWidget().revalidate();
                 boolean taskCompleted = plugin.isTaskCompleted(task.getId(), finalRelevantTier);
-
-                // Add our right click actions
-                taskBg.addAction("Mark as " + (taskCompleted ? "<col=c0392b>incomplete" : "<col=27ae60>completed") + "</col>", () -> plugin.completeTask(task.getId(), finalRelevantTier));
-                int[] checkArray = task.getItemIds();
-                Integer count = task.getCount();
-                if (checkArray != null && checkArray.length > 0 && count != null && count > 0) {
-                    taskBg.addAction("==============", () -> {});
-                    List<String> lockedItems = new ArrayList<>();
-                    List<String> unlockedItems = new ArrayList<>();
-                    for (int checkID : checkArray) {
-                        String itemName = plugin.itemManager.getItemComposition(checkID).getName();
-                        itemName = itemName.replaceFirst("^Pet\\s+", "");
-                        itemName = itemName.replaceFirst("^(.)", itemName.substring(0, 1).toUpperCase());
-                        if (plugin.clogItemsManager.isCollectionLogItemUnlocked(checkID)) {
-                            unlockedItems.add(itemName);
-                        } else {
-                            lockedItems.add(itemName);
-                        }
-                    }
-                    if (checkArray.length > 1) {
-                        taskBg.addAction("Items acquired: " + (count <= unlockedItems.size() ? "<col=27ae60>" : "<col=c0392b>") + unlockedItems.size() + "/" + count + "</col>", () -> {});
-                        taskBg.addAction("==============", () -> {});
-                    }
-                    lockedItems.sort(String::compareToIgnoreCase);
-                    for (String item : lockedItems) {
-                        taskBg.addAction("<col=c0392b>-</col> " + item, () -> {});
-                    }
-                    unlockedItems.sort(String::compareToIgnoreCase);
-                    for (String item : unlockedItems) {
-                        taskBg.addAction("<col=27ae60>+</col> " + item, () -> {});
-                    }
-                }
 
                 // Set our background sprite based on task state
                 var activeTaskPointer = saveDataManager.getSaveData().getActiveTaskPointer();
@@ -275,11 +243,10 @@ public class TaskList extends UIPage {
                 taskLabel.setFont(496);
                 taskLabel.setPosition(taskX + 60, taskY);
                 taskLabel.setSize(TASK_WIDTH-60, TASK_HEIGHT);
-                taskLabel.getWidget().revalidate();
 
                 // Create the task image
                 UIGraphic taskImage;
-                if(taskImages.size() <= widgetIndex) {
+                if (taskImages.size() <= widgetIndex) {
                     // Create a new image if it doesn't exist yet
                     taskImage = new UIGraphic(window.createChild(-1, WidgetType.GRAPHIC));
                     this.add(taskImage);
@@ -292,28 +259,68 @@ public class TaskList extends UIPage {
                 taskImage.getWidget().setBorderType(1);
                 taskImage.getWidget().setItemQuantityMode(ItemQuantityMode.NEVER);
                 taskImage.setSize(TASK_ITEM_WIDTH, TASK_ITEM_HEIGHT);
-                if (
-                    !task.getName().contains("clues")
-                    && ((!taskCompleted && config.dynamicIncompleteItems()) || (taskCompleted && config.dynamicCompletedItems()))
-                    && checkArray != null && checkArray.length > 0
-                ) {
-                    List<Integer> potentialItems = new ArrayList<>();
-                    for (int checkID : checkArray) {
-                        if (
-                            (taskCompleted && plugin.clogItemsManager.isCollectionLogItemUnlocked(checkID)) ||
-                            (!taskCompleted && !plugin.clogItemsManager.isCollectionLogItemUnlocked(checkID))
-                         ) {
-                            potentialItems.add(checkID);
+                taskImage.setItem(task.getDisplayItemId());
+
+                // Add our right click actions
+                taskBg.addAction("Mark as " + (taskCompleted ? "<col=c0392b>incomplete" : "<col=27ae60>completed") + "</col>", () -> plugin.completeTask(task.getId(), finalRelevantTier));
+
+                if (task.getVerification() instanceof CollectionLogVerification) {
+                    CollectionLogVerification verif = (CollectionLogVerification) task.getVerification();
+
+                    int[] checkArray = verif.getItemIds();
+                    int count = verif.getCount();
+                    if (checkArray.length > 0) {
+                        taskBg.addAction("==============", () -> {});
+                        List<String> lockedItems = new ArrayList<>();
+                        List<String> unlockedItems = new ArrayList<>();
+                        for (int checkID : checkArray) {
+                            String itemName = plugin.itemManager.getItemComposition(checkID).getName();
+                            itemName = itemName.replaceFirst("^Pet\\s+", "");
+                            itemName = itemName.replaceFirst("^(.)", itemName.substring(0, 1).toUpperCase());
+                            if (plugin.clogItemsManager.isCollectionLogItemUnlocked(checkID)) {
+                                unlockedItems.add(itemName);
+                            } else {
+                                lockedItems.add(itemName);
+                            }
+                        }
+                        if (checkArray.length > 1) {
+                            taskBg.addAction("Items acquired: " + (count <= unlockedItems.size() ? "<col=27ae60>" : "<col=c0392b>") + unlockedItems.size() + "/" + count + "</col>", () -> {});
+                            taskBg.addAction("==============", () -> {});
+                        }
+                        lockedItems.sort(String::compareToIgnoreCase);
+                        for (String item : lockedItems) {
+                            taskBg.addAction("<col=c0392b>-</col> " + item, () -> {});
+                        }
+                        unlockedItems.sort(String::compareToIgnoreCase);
+                        for (String item : unlockedItems) {
+                            taskBg.addAction("<col=27ae60>+</col> " + item, () -> {});
                         }
                     }
-                    if (potentialItems.isEmpty()) {
-                        potentialItems.add(task.getDisplayItemId());
+
+                    if (
+                        !task.getName().contains("clues")
+                        && ((!taskCompleted && config.dynamicIncompleteItems()) || (taskCompleted && config.dynamicCompletedItems()))
+                    ) {
+                        List<Integer> potentialItems = new ArrayList<>();
+                        for (int checkID : checkArray) {
+                            if (
+                                (taskCompleted && plugin.clogItemsManager.isCollectionLogItemUnlocked(checkID)) ||
+                                (!taskCompleted && !plugin.clogItemsManager.isCollectionLogItemUnlocked(checkID))
+                             ) {
+                                potentialItems.add(checkID);
+                            }
+                        }
+
+                        if (!potentialItems.isEmpty()) {
+                            taskImage.setItem(potentialItems.get((count - 1) % potentialItems.size()));
+                        }
                     }
-                    taskImage.setItem(potentialItems.get((count != null ? count : 1) - 1) % potentialItems.size());
-                } else {
-                    taskImage.setItem(task.getDisplayItemId());
                 }
-                taskImage.getWidget().revalidate();
+
+                taskImage.revalidate();
+                taskLabel.revalidate();
+                taskBg.revalidate();
+
                 widgetIndex++;
             }
         }
