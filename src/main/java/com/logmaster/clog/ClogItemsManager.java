@@ -46,15 +46,14 @@ public class ClogItemsManager {
     private TimerTask syncButtonTask = null;
     private boolean userInitiatedSync = false;
 
-    public boolean isCollectionLogItemUnlocked(int itemId) {
+    public boolean isObtained(int itemId) {
         // Some items have bad IDs, check these ones for a replacement
         EnumComposition replacements = client.getEnum(3721);
         int replacementItemId = replacements.getIntValue(itemId);
         itemId = replacementItemId >= 0 ? replacementItemId : itemId;
 
         // Check if the bit is set in our bitset
-        boolean isUnlocked = clogItemsUnlocked.contains(itemId);
-        return isUnlocked;
+        return clogItemsUnlocked.contains(itemId);
     }
 
     private void scheduleSync() {
@@ -65,14 +64,14 @@ public class ClogItemsManager {
             syncButtonTask = new java.util.TimerTask() {
                 @Override
                 public void run() {
-                    clientThread.invokeLater(() -> syncClogWithProgress());
+                    clientThread.invokeLater(() -> syncProgress());
                 }
             };
             syncButtonTimer.schedule(syncButtonTask, 3000);
         }
     }
 
-    public void updatePlayersCollectionLogItems(ScriptPreFired preFired) {
+    public void update(ScriptPreFired preFired) {
         Object[] args = preFired.getScriptEvent().getArguments();
         if (args == null || args.length < 2) {
             return;
@@ -88,7 +87,7 @@ public class ClogItemsManager {
         }
     }
 
-    public void clearCollectionLog() {
+    public void clear() {
         clogItemsUnlocked.clear();
         // Reset sync flag when clearing collection log
         userInitiatedSync = false;
@@ -109,17 +108,17 @@ public class ClogItemsManager {
     public void sync() {
         userInitiatedSync = true;
         disableButton("Loading collection log items...");
-        refreshCollectionLog();
+        refresh();
     }
 
-    public void refreshCollectionLog() {
+    public void refresh() {
         clientThread.invokeLater(() -> {
             client.menuAction(-1, net.runelite.api.gameval.InterfaceID.Collection.SEARCH_TOGGLE, MenuAction.CC_OP, 1, -1, "Search", null);
             client.runScript(2240);
         });
     }
 
-    public void syncClogWithProgress() {
+    public void syncProgress() {
         if (clogItemsUnlocked.isEmpty()) {
             return;
         }
@@ -143,7 +142,7 @@ public class ClogItemsManager {
 
                 int count = 0;
                 for (int itemId : check) {
-                    if (isCollectionLogItemUnlocked(itemId)) {
+                    if (isObtained(itemId)) {
                         count++;
                     }
                 }

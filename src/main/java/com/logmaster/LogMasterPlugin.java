@@ -100,19 +100,19 @@ public class LogMasterPlugin extends Plugin {
 
 	@Subscribe
 	public void onGameStateChanged(GameStateChanged gameStateChanged) {
-		if (gameStateChanged.getGameState() == GameState.LOGGED_IN) {
-			saveDataManager.getSaveData();
-		} else if(gameStateChanged.getGameState().equals(GameState.LOGIN_SCREEN)) {
-			saveDataManager.save();
-		}
-		
 		switch (gameStateChanged.getGameState())
 		{
+			case LOGGED_IN:
+				saveDataManager.getSaveData();
+				break;
+			case LOGIN_SCREEN:
+				saveDataManager.save();
+				break;
 			// When hopping, we clear the collection log to prevent stale data
 			case HOPPING:
 			case LOGGING_IN:
 			case CONNECTION_LOST:
-				clogItemsManager.clearCollectionLog();
+				clogItemsManager.clear();
 				break;
 			default:
 				break;
@@ -128,7 +128,7 @@ public class LogMasterPlugin extends Plugin {
 				@Override
 				public void run() {
 					clientThread.invokeAtTickEnd(() -> {
-						clogItemsManager.refreshCollectionLog();
+						clogItemsManager.refresh();
 					});
 				}
 			}, 600);
@@ -302,7 +302,7 @@ public class LogMasterPlugin extends Plugin {
 		// This is fired when the collection log search is opened
 		// This will allow us to see all the item IDs of obtained items
 		if (preFired.getScriptId() == 4100){
-			clogItemsManager.updatePlayersCollectionLogItems(preFired);
+			clogItemsManager.update(preFired);
 		}
 	}
 }

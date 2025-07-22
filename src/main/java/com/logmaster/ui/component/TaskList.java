@@ -277,7 +277,7 @@ public class TaskList extends UIPage {
                             String itemName = plugin.itemManager.getItemComposition(checkID).getName();
                             itemName = itemName.replaceFirst("^Pet\\s+", "");
                             itemName = itemName.replaceFirst("^(.)", itemName.substring(0, 1).toUpperCase());
-                            if (plugin.clogItemsManager.isCollectionLogItemUnlocked(checkID)) {
+                            if (plugin.clogItemsManager.isObtained(checkID)) {
                                 unlockedItems.add(itemName);
                             } else {
                                 lockedItems.add(itemName);
@@ -304,8 +304,8 @@ public class TaskList extends UIPage {
                         List<Integer> potentialItems = new ArrayList<>();
                         for (int checkID : checkArray) {
                             if (
-                                (taskCompleted && plugin.clogItemsManager.isCollectionLogItemUnlocked(checkID)) ||
-                                (!taskCompleted && !plugin.clogItemsManager.isCollectionLogItemUnlocked(checkID))
+                                (taskCompleted && plugin.clogItemsManager.isObtained(checkID)) ||
+                                (!taskCompleted && !plugin.clogItemsManager.isObtained(checkID))
                              ) {
                                 potentialItems.add(checkID);
                             }
