@@ -2,6 +2,7 @@ package com.logmaster.ui.component;
 
 import com.logmaster.LogMasterConfig;
 import com.logmaster.LogMasterPlugin;
+import com.logmaster.domain.DynamicTaskImages;
 import com.logmaster.domain.Task;
 import com.logmaster.domain.TaskTier;
 import com.logmaster.domain.verification.CollectionLogVerification;
@@ -299,7 +300,7 @@ public class TaskList extends UIPage {
 
                     if (
                         !task.getName().contains("clues")
-                        && ((!taskCompleted && config.dynamicIncompleteItems()) || (taskCompleted && config.dynamicCompletedItems()))
+                        && (config.dynamicTaskImages() == DynamicTaskImages.ALL || (!taskCompleted && config.dynamicTaskImages() == DynamicTaskImages.INCOMPLETE) || (taskCompleted && config.dynamicTaskImages() == DynamicTaskImages.COMPLETE))
                     ) {
                         List<Integer> potentialItems = new ArrayList<>();
                         for (int checkID : checkArray) {

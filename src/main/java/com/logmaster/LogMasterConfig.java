@@ -1,5 +1,6 @@
 package com.logmaster;
 
+import com.logmaster.domain.DynamicTaskImages;
 import com.logmaster.domain.TaskTier;
 import net.runelite.client.config.Config;
 import net.runelite.client.config.ConfigGroup;
@@ -79,24 +80,13 @@ public interface LogMasterConfig extends Config
     }
 
     @ConfigItem(
-            keyName = "dynamicCompletedItems",
-            name = "Dynamic completed items",
-            description = "Display complete tasks with items you have already obtained",
+            keyName = "dynamicTaskImages",
+            name = "Dynamic task images",
+            description = "Display dynamic task images based on required/acquired items",
             position = 6
     )
-    default boolean dynamicCompletedItems()
+    default DynamicTaskImages dynamicTaskImages()
     {
-        return false;
-    }
-
-    @ConfigItem(
-            keyName = "dynamicIncompleteItems",
-            name = "Dynamic incomplete items",
-            description = "Display incomplete tasks with items you have not obtained yet",
-            position = 7
-    )
-    default boolean dynamicIncompleteItems()
-    {
-        return false;
+        return DynamicTaskImages.NONE;
     }
 }
