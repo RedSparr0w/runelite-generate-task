@@ -13,7 +13,6 @@ import com.logmaster.ui.component.TaskOverlay;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.ChatMessageType;
 import net.runelite.api.Client;
-import net.runelite.api.GameState;
 import net.runelite.api.SoundEffectID;
 import net.runelite.api.events.*;
 import net.runelite.api.gameval.InterfaceID;
@@ -31,6 +30,8 @@ import net.runelite.client.util.LinkBrowser;
 
 import javax.inject.Inject;
 import java.util.*;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -44,6 +45,9 @@ public class LogMasterPlugin extends Plugin {
 
 	@Inject
 	private ClientThread clientThread;
+    
+	@Inject
+	private ScheduledExecutorService scheduledExecutorService;
 
 	@Inject
 	private LogMasterConfig config;
@@ -124,14 +128,8 @@ public class LogMasterPlugin extends Plugin {
 		if(e.getGroupId() == InterfaceID.COLLECTION) {
 			interfaceManager.handleCollectionLogOpen();
 			// Refresh the collection log after a short delay to ensure it is fully loaded
-			new Timer().schedule(new TimerTask() {
-				@Override
-				public void run() {
-					clientThread.invokeAtTickEnd(() -> {
-						clogItemsManager.refresh();
-					});
-				}
-			}, 600);
+			scheduledExecutorService.schedule(() -> clientThread.invokeAtTickEnd(() -> { clogItemsManager.refresh(); }),
+				600, TimeUnit.MILLISECONDS);
 		}
 	}
 

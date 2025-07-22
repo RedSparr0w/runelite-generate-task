@@ -18,6 +18,9 @@ import javax.inject.Inject;
 import java.util.HashSet;
 import java.util.Timer;
 import java.util.TimerTask;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
 
 @Slf4j
 public class ClogItemsManager {
@@ -33,6 +36,9 @@ public class ClogItemsManager {
 
     @Inject
     private TaskService taskService;
+    
+    @Inject
+    private ScheduledExecutorService scheduledExecutorService;
 
     @Inject
     private InterfaceManager interfaceManager;
@@ -42,8 +48,7 @@ public class ClogItemsManager {
 
     private static final HashSet<Integer> clogItemsUnlocked = new HashSet<>();
     private final Object syncButtonLock = new Object();
-    private Timer syncButtonTimer = new java.util.Timer("SyncButtonTimer", true);
-    private TimerTask syncButtonTask = null;
+    private ScheduledFuture<?> syncButtonTask = null;
     private boolean userInitiatedSync = false;
 
     public boolean isObtained(int itemId) {
@@ -56,19 +61,11 @@ public class ClogItemsManager {
         return clogItemsUnlocked.contains(itemId);
     }
 
-    private void scheduleSync() {
-        synchronized (syncButtonLock) {
-            if (syncButtonTask != null) {
-                syncButtonTask.cancel();
-            }
-            syncButtonTask = new java.util.TimerTask() {
-                @Override
-                public void run() {
-                    clientThread.invokeLater(() -> syncProgress());
-                }
-            };
-            syncButtonTimer.schedule(syncButtonTask, 3000);
+    private synchronized void scheduleSync() {
+        if (syncButtonTask != null) {
+            syncButtonTask.cancel(false);
         }
+        syncButtonTask = scheduledExecutorService.schedule(() -> clientThread.invokeLater(() -> syncProgress()), 3, TimeUnit.SECONDS);
     }
 
     public void update(ScriptPreFired preFired) {
