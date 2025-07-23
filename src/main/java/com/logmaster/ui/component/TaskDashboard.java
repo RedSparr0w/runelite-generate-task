@@ -2,9 +2,9 @@ package com.logmaster.ui.component;
 
 import com.logmaster.LogMasterConfig;
 import com.logmaster.LogMasterPlugin;
-import com.logmaster.clog.ClogItemsManager;
 import com.logmaster.domain.Task;
 import com.logmaster.persistence.SaveDataManager;
+import com.logmaster.synchronization.SyncService;
 import com.logmaster.task.TaskService;
 import com.logmaster.ui.generic.UIButton;
 import com.logmaster.ui.generic.UIGraphic;
@@ -52,7 +52,7 @@ public class TaskDashboard extends UIPage {
 
     private final TaskService taskService;
     private final SaveDataManager saveDataManager;
-    private final ClogItemsManager clogItemsManager;
+    private final SyncService syncService;
 
     private UILabel title;
     private UILabel taskLabel;
@@ -66,13 +66,13 @@ public class TaskDashboard extends UIPage {
     private UIButton faqBtn;
     private UIButton syncBtn;
 
-    public TaskDashboard(LogMasterPlugin plugin, LogMasterConfig config, Widget window, TaskService taskService, SaveDataManager saveDataManager, ClogItemsManager clogItemsManager) {
+    public TaskDashboard(LogMasterPlugin plugin, LogMasterConfig config, Widget window, TaskService taskService, SaveDataManager saveDataManager, SyncService syncService) {
         this.window = window;
         this.plugin = plugin;
         this.config = config;
         this.taskService = taskService;
         this.saveDataManager = saveDataManager;
-        this.clogItemsManager = clogItemsManager;
+        this.syncService = syncService;
 
         createTaskDetails();
 
@@ -260,13 +260,7 @@ public class TaskDashboard extends UIPage {
     public void enableSyncButton() {
         this.syncBtn.clearActions();
         this.syncBtn.setSprites(SYNC_BUTTON_SPRITE_ID, SYNC_BUTTON_HOVER_SPRITE_ID);
-        this.syncBtn.addAction("Auto sync completed collection log slots", clogItemsManager::sync);
-    }
-
-    public void disableSyncButton(String reason) {
-        this.syncBtn.clearActions();
-        this.syncBtn.setSprites(SYNC_BUTTON_DISABLED_SPRITE_ID);
-        this.syncBtn.addAction(reason, plugin::playFailSound);
+        this.syncBtn.addAction("Auto sync completed tasks", syncService::sync);
     }
 
     public void updateBounds() {

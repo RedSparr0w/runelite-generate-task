@@ -1,5 +1,6 @@
-package com.logmaster.domain.verification;
+package com.logmaster.domain.verification.diary;
 
+import com.logmaster.domain.verification.Verification;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -9,6 +10,6 @@ import lombok.NonNull;
 @AllArgsConstructor
 @NoArgsConstructor
 public class AchievementDiaryVerification extends Verification {
-    private @NonNull String region;
-    private @NonNull String difficulty;
+    private @NonNull DiaryRegion region;
+    private @NonNull DiaryDifficulty difficulty;
 }

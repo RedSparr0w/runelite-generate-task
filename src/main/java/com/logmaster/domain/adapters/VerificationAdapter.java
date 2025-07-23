@@ -1,6 +1,10 @@
-package com.logmaster.domain.verification;
+package com.logmaster.domain.adapters;
 
 import com.google.gson.*;
+import com.logmaster.domain.verification.diary.AchievementDiaryVerification;
+import com.logmaster.domain.verification.clog.CollectionLogVerification;
+import com.logmaster.domain.verification.Verification;
+import com.logmaster.domain.verification.VerificationMethod;
 import lombok.extern.slf4j.Slf4j;
 
 import java.lang.reflect.Type;
@@ -20,7 +24,7 @@ public class VerificationAdapter implements JsonDeserializer<Verification> {
         String methodStr = obj.get(DISCRIMINATOR_FIELD).getAsString();
         VerificationMethod method;
         try {
-            method = VerificationMethod.fromMethodString(methodStr);
+            method = VerificationMethod.fromString(methodStr);
         } catch (IllegalArgumentException e) {
             log.error("Verification object has unknown discriminator field value '{}'", methodStr);
             return null;

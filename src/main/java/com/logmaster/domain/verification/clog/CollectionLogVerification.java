@@ -1,5 +1,6 @@
-package com.logmaster.domain.verification;
+package com.logmaster.domain.verification.clog;
 
+import com.logmaster.domain.verification.Verification;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -9,6 +10,6 @@ import lombok.NonNull;
 @AllArgsConstructor
 @NoArgsConstructor
 public class CollectionLogVerification extends Verification {
-    private @NonNull int[] itemIds;
+    private int @NonNull [] itemIds;
     private int count;
 }

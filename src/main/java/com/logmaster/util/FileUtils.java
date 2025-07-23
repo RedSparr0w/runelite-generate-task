@@ -6,8 +6,6 @@ import java.io.InputStreamReader;
 import static com.logmaster.util.GsonOverride.GSON;
 
 public class FileUtils {
-
-
     /**
      * Loads a definition resource from a JSON file
      *
