@@ -1,9 +1,11 @@
 package com.logmaster;
 
 import com.google.inject.Provides;
+import com.logmaster.clog.ClogItemsManager;
 import com.logmaster.domain.Task;
 import com.logmaster.domain.TaskPointer;
 import com.logmaster.domain.TaskTier;
+import com.logmaster.domain.verification.CollectionLogVerification;
 import com.logmaster.persistence.SaveDataManager;
 import com.logmaster.task.TaskService;
 import com.logmaster.ui.InterfaceManager;
@@ -11,14 +13,15 @@ import com.logmaster.ui.component.TaskOverlay;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.ChatMessageType;
 import net.runelite.api.Client;
-import net.runelite.api.GameState;
 import net.runelite.api.SoundEffectID;
 import net.runelite.api.events.*;
 import net.runelite.api.gameval.InterfaceID;
 import net.runelite.api.widgets.Widget;
+import net.runelite.client.callback.ClientThread;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.events.ConfigChanged;
+import net.runelite.client.game.ItemManager;
 import net.runelite.client.input.MouseManager;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
@@ -26,9 +29,11 @@ import net.runelite.client.ui.overlay.OverlayManager;
 import net.runelite.client.util.LinkBrowser;
 
 import javax.inject.Inject;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 @Slf4j
 @PluginDescriptor(name = "Collection Log Master")
@@ -37,6 +42,12 @@ public class LogMasterPlugin extends Plugin {
 
 	@Inject
 	private Client client;
+
+	@Inject
+	private ClientThread clientThread;
+    
+	@Inject
+	private ScheduledExecutorService scheduledExecutorService;
 
 	@Inject
 	private LogMasterConfig config;
@@ -58,6 +69,12 @@ public class LogMasterPlugin extends Plugin {
 
 	@Inject
 	private InterfaceManager interfaceManager;
+
+	@Inject
+	public ItemManager itemManager;
+
+	@Inject
+	public ClogItemsManager clogItemsManager;
 
 	@Override
 	protected void startUp()
@@ -87,10 +104,22 @@ public class LogMasterPlugin extends Plugin {
 
 	@Subscribe
 	public void onGameStateChanged(GameStateChanged gameStateChanged) {
-		if (gameStateChanged.getGameState() == GameState.LOGGED_IN) {
-			saveDataManager.getSaveData();
-		} else if(gameStateChanged.getGameState().equals(GameState.LOGIN_SCREEN)) {
-			saveDataManager.save();
+		switch (gameStateChanged.getGameState())
+		{
+			case LOGGED_IN:
+				saveDataManager.getSaveData();
+				break;
+			case LOGIN_SCREEN:
+				saveDataManager.save();
+				break;
+			// When hopping, we clear the collection log to prevent stale data
+			case HOPPING:
+			case LOGGING_IN:
+			case CONNECTION_LOST:
+				clogItemsManager.clear();
+				break;
+			default:
+				break;
 		}
 	}
 
@@ -98,6 +127,9 @@ public class LogMasterPlugin extends Plugin {
 	public void onWidgetLoaded(WidgetLoaded e) {
 		if(e.getGroupId() == InterfaceID.COLLECTION) {
 			interfaceManager.handleCollectionLogOpen();
+			// Refresh the collection log after a short delay to ensure it is fully loaded
+			scheduledExecutorService.schedule(() -> clientThread.invokeAtTickEnd(() -> { clogItemsManager.refresh(); }),
+				600, TimeUnit.MILLISECONDS);
 		}
 	}
 
@@ -108,12 +140,12 @@ public class LogMasterPlugin extends Plugin {
 		}
 	}
 
-    @Subscribe
-    public void onScriptPostFired(ScriptPostFired scriptPostFired) {
-        if (scriptPostFired.getScriptId() == COLLECTION_LOG_SETUP_SCRIPT_ID) {
-            interfaceManager.handleCollectionLogScriptRan();
-        }
-    }
+	@Subscribe
+	public void onScriptPostFired(ScriptPostFired scriptPostFired) {
+		if (scriptPostFired.getScriptId() == COLLECTION_LOG_SETUP_SCRIPT_ID) {
+			interfaceManager.handleCollectionLogScriptRan();
+		}
+	}
 
 	@Subscribe
 	public void onGameTick(GameTick event) {
@@ -137,32 +169,63 @@ public class LogMasterPlugin extends Plugin {
 			return;
 		}
 
-		int index = (int) Math.floor(Math.random()*uniqueTasks.size());
-
-
+		Task selectedTask = pickRandomTask(uniqueTasks);
 		TaskPointer newTaskPointer = new TaskPointer();
-		newTaskPointer.setTask(uniqueTasks.get(index));
+		newTaskPointer.setTask(selectedTask);
 		newTaskPointer.setTaskTier(getCurrentTier());
 		this.saveDataManager.getSaveData().setActiveTaskPointer(newTaskPointer);
 		this.saveDataManager.save();
-		interfaceManager.rollTask(this.saveDataManager.getSaveData().getActiveTaskPointer().getTask().getName(), this.saveDataManager.getSaveData().getActiveTaskPointer().getTask().getDisplayItemId(), config.rollPastCompleted() ? taskService.getForTier(getCurrentTier()) : uniqueTasks);
-		log.debug("Task generated: "+this.saveDataManager.getSaveData().getActiveTaskPointer().getTask().getName());
+		interfaceManager.rollTask(newTaskPointer.getTask().getName(), newTaskPointer.getTask().getDisplayItemId(), config.rollPastCompleted() ? taskService.getForTier(getCurrentTier()) : uniqueTasks);
+		log.debug("Task generated: {} - {}", newTaskPointer.getTask().getName(), newTaskPointer.getTask().getId());
 
 		this.saveDataManager.save();
 	}
 
+	private static Task pickRandomTask(List<Task> uniqueTasks) {
+		int index = (int) Math.floor(Math.random() * uniqueTasks.size());
+		Task task = uniqueTasks.get(index);
+
+		if (!(task.getVerification() instanceof CollectionLogVerification)) {
+			return task;
+		}
+
+		// get first of similarly named tasks
+		String taskName = task.getName();
+		Stream<Task> similarTasks = uniqueTasks.stream()
+				.filter(t -> taskName.equals(t.getName()))
+				.filter(t -> t.getVerification() instanceof CollectionLogVerification);
+
+		return similarTasks.min(Comparator.comparingInt(
+			t -> ((CollectionLogVerification) t.getVerification()).getCount()
+		)).orElse(task);
+	}
+
 	public void completeTask() {
-		completeTask(saveDataManager.getSaveData().getActiveTaskPointer().getTask().getId(), saveDataManager.getSaveData().getActiveTaskPointer().getTaskTier());
+		TaskPointer activeTaskPointer = saveDataManager.getSaveData().getActiveTaskPointer();
+		if (activeTaskPointer != null && activeTaskPointer.getTask() != null) {
+			completeTask(activeTaskPointer.getTask().getId(), activeTaskPointer.getTaskTier());
+		}
+	}
+
+	public boolean isTaskCompleted(String taskID, TaskTier tier) {
+		return saveDataManager.getSaveData().getProgress().get(tier).contains(taskID);
 	}
 
 	public void completeTask(String taskID, TaskTier tier) {
-		this.client.playSoundEffect(SoundEffectID.UI_BOOP);
+		completeTask(taskID, tier, true);
+	}
+
+	public void completeTask(String taskID, TaskTier tier, boolean playSound) {
+		if (playSound) {
+			this.client.playSoundEffect(SoundEffectID.UI_BOOP);
+		}
 
 		if (saveDataManager.getSaveData().getProgress().get(tier).contains(taskID)) {
 			saveDataManager.getSaveData().getProgress().get(tier).remove(taskID);
 		} else {
 			addCompletedTask(taskID, tier);
-			if (saveDataManager.getSaveData().getActiveTaskPointer() != null && taskID.equals(saveDataManager.getSaveData().getActiveTaskPointer().getTask().getId())) {
+			TaskPointer activePointer = saveDataManager.getSaveData().getActiveTaskPointer();
+			if (activePointer != null && activePointer.getTask() != null && taskID.equals(activePointer.getTask().getId())) {
 				nullCurrentTask();
 			}
 		}
@@ -230,5 +293,14 @@ public class LogMasterPlugin extends Plugin {
 
 	public void visitFaq() {
 		LinkBrowser.browse("https://docs.google.com/document/d/e/2PACX-1vTHfXHzMQFbt_iYAP-O88uRhhz3wigh1KMiiuomU7ftli-rL_c3bRqfGYmUliE1EHcIr3LfMx2UTf2U/pub");
+	}
+
+	@Subscribe
+	public void onScriptPreFired(ScriptPreFired preFired) {
+		// This is fired when the collection log search is opened
+		// This will allow us to see all the item IDs of obtained items
+		if (preFired.getScriptId() == 4100){
+			clogItemsManager.update(preFired);
+		}
 	}
 }

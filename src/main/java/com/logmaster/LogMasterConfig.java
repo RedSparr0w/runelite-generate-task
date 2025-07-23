@@ -1,12 +1,12 @@
 package com.logmaster;
 
+import com.logmaster.domain.DynamicTaskImages;
 import com.logmaster.domain.TaskTier;
 import net.runelite.client.config.Config;
 import net.runelite.client.config.ConfigGroup;
 import net.runelite.client.config.ConfigItem;
 import net.runelite.client.config.Range;
 import net.runelite.client.config.Units;
-import net.runelite.client.plugins.camera.ControlFunction;
 
 import static com.logmaster.LogMasterConfig.CONFIG_GROUP;
 
@@ -77,5 +77,16 @@ public interface LogMasterConfig extends Config
     default boolean displayCurrentTaskOverlay()
     {
         return true;
+    }
+
+    @ConfigItem(
+            keyName = "dynamicTaskImages",
+            name = "Dynamic task images",
+            description = "Display dynamic task images based on required/acquired items",
+            position = 6
+    )
+    default DynamicTaskImages dynamicTaskImages()
+    {
+        return DynamicTaskImages.NONE;
     }
 }

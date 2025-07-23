@@ -1,9 +1,9 @@
 package com.logmaster.ui;
 
-import com.google.gson.Gson;
 import com.logmaster.LogMasterConfig;
 import com.logmaster.LogMasterPlugin;
 import com.logmaster.domain.Task;
+import com.logmaster.domain.TaskPointer;
 import com.logmaster.domain.TaskTier;
 import com.logmaster.persistence.SaveDataManager;
 import com.logmaster.task.TaskService;
@@ -56,15 +56,11 @@ public class InterfaceManager implements MouseListener, MouseWheelListener {
     private SpriteManager spriteManager;
 
     @Inject
-    private Gson gson;
-
-    @Inject
     private SaveDataManager saveDataManager;
-
 
     private SpriteDefinition[] spriteDefinitions;
 
-    private TaskDashboard taskDashboard;
+    public TaskDashboard taskDashboard;
     private TaskList taskList;
     private TabManager tabManager;
 
@@ -72,7 +68,7 @@ public class InterfaceManager implements MouseListener, MouseWheelListener {
     private UIDropdown dropdown;
 
     public void initialise() {
-        this.spriteDefinitions = FileUtils.loadDefinitionResource(SpriteDefinition[].class, DEF_FILE_SPRITES, gson);
+        this.spriteDefinitions = FileUtils.loadDefinitionResource(SpriteDefinition[].class, DEF_FILE_SPRITES);
         this.spriteManager.addSpriteOverrides(spriteDefinitions);
     }
 
@@ -224,12 +220,12 @@ public class InterfaceManager implements MouseListener, MouseWheelListener {
     }
 
     private void createTaskDashboard(Widget window) {
-        this.taskDashboard = new TaskDashboard(plugin, config, window, taskService, saveDataManager);
+        this.taskDashboard = new TaskDashboard(plugin, config, window, taskService, saveDataManager, plugin.clogItemsManager);
         this.taskDashboard.setVisibility(false);
     }
 
     private void createTaskList(Widget window) {
-        this.taskList = new TaskList(window, taskService, plugin, clientThread, this.saveDataManager);
+        this.taskList = new TaskList(window, taskService, plugin, clientThread, this.saveDataManager, config);
         this.taskList.setVisibility(false);
     }
 
@@ -247,6 +243,8 @@ public class InterfaceManager implements MouseListener, MouseWheelListener {
             taskDashboardCheckbox.setEnabled(false);
             taskDashboardCheckbox.setText("Task Dashboard");
             labelWidget.setPos(375, 10);
+                    
+
             taskDashboardCheckbox.setToggleListener((UICheckBox src) -> {
                 if (taskDashboardCheckbox.isEnabled()) {
                     this.dropdown.setEnabledOption("Tasks");
@@ -260,21 +258,30 @@ public class InterfaceManager implements MouseListener, MouseWheelListener {
     private void toggleTaskDashboard(UIDropdownOption src) {
         if(this.taskDashboard == null) return;
 
-        if (saveDataManager.getSaveData().getActiveTaskPointer() != null) {
-            this.taskDashboard.setTask(this.saveDataManager.getSaveData().getActiveTaskPointer().getTask().getName(), this.saveDataManager.getSaveData().getActiveTaskPointer().getTask().getDisplayItemId(), null);
+        TaskPointer activeTaskPointer = saveDataManager.getSaveData().getActiveTaskPointer();
+        if (activeTaskPointer != null) {
+            this.taskDashboard.setTask(activeTaskPointer.getTask().getName(), activeTaskPointer.getTask().getDisplayItemId(), null);
             this.taskDashboard.disableGenerateTask();
         } else {
             plugin.nullCurrentTask();
         }
 
         boolean enabled = isTaskDashboardEnabled();
+        
+        
         this.taskDashboardCheckbox.setEnabled(enabled);
-        for (Widget c : client.getWidget(InterfaceID.Collection.CONTENT).getStaticChildren()) {
-            c.setHidden(enabled);
+        Widget contentWidget = client.getWidget(InterfaceID.Collection.CONTENT);
+        if (contentWidget != null) {
+            for (Widget c : contentWidget.getStaticChildren()) {
+                c.setHidden(enabled);
+            }
         }
-        client.getWidget(InterfaceID.Collection.SEARCH_TITLE).setHidden(enabled);
+        Widget searchTitleWidget = client.getWidget(InterfaceID.Collection.SEARCH_TITLE);
+        if (searchTitleWidget != null) {
+            searchTitleWidget.setHidden(enabled);
+        }
 
-        if (isTaskDashboardEnabled()) {
+        if (enabled) {
             this.tabManager.activateTaskDashboard();
         } else {
             this.taskDashboard.setVisibility(false);

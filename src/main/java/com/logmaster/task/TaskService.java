@@ -1,6 +1,5 @@
 package com.logmaster.task;
 
-import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import com.logmaster.LogMasterConfig;
 import com.logmaster.domain.SaveData;
@@ -20,14 +19,13 @@ import java.io.IOException;
 import java.util.*;
 import java.util.stream.Collectors;
 
+import static com.logmaster.util.GsonOverride.GSON;
+
 @Singleton
 @Slf4j
 public class TaskService {
 
     private static final String DEF_FILE_TASKS = "task-list.json";
-
-    @Inject
-    private Gson gson;
 
     @Inject
     private LogMasterConfig config;
@@ -41,7 +39,7 @@ public class TaskService {
 
     public TieredTaskList getTaskList() {
         if (localList == null) {
-            this.localList = FileUtils.loadDefinitionResource(TieredTaskList.class, DEF_FILE_TASKS, gson);
+            this.localList = FileUtils.loadDefinitionResource(TieredTaskList.class, DEF_FILE_TASKS);
         }
         if (remoteList == null && !requestedRemoteList && config.loadRemoteTaskList()) {
             loadRemoteTaskList();
@@ -95,12 +93,12 @@ public class TaskService {
                         return;
                     }
                     log.debug("Loaded remote task list!");
-                    remoteList = gson.fromJson(tasksJson, TieredTaskList.class);
+                    remoteList = GSON.fromJson(tasksJson, TieredTaskList.class);
                 }
             });
         } catch (IOException e) {
             log.error("Unable to load remote task list, will defer to the default task list");
-            this.localList = FileUtils.loadDefinitionResource(TieredTaskList.class, DEF_FILE_TASKS, gson);
+            this.localList = FileUtils.loadDefinitionResource(TieredTaskList.class, DEF_FILE_TASKS);
         }
     }
 }

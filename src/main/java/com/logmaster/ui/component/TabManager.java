@@ -1,7 +1,6 @@
 package com.logmaster.ui.component;
 
 import com.logmaster.LogMasterConfig;
-import com.logmaster.LogMasterPlugin;
 import com.logmaster.domain.TaskTier;
 import com.logmaster.persistence.SaveDataManager;
 import com.logmaster.ui.generic.UIButton;

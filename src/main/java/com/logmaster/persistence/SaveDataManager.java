@@ -20,7 +20,7 @@ import java.util.Map;
 import java.util.Set;
 
 import static com.logmaster.LogMasterConfig.*;
-import static net.runelite.http.api.RuneLiteAPI.GSON;
+import static com.logmaster.util.GsonOverride.GSON;
 
 @Singleton
 @Slf4j
@@ -41,10 +41,8 @@ public class SaveDataManager {
     }
 
     public Task currentTask() {
-        if (getSaveData().getActiveTaskPointer() == null) {
-            return null;
-        }
-        return getSaveData().getActiveTaskPointer().getTask();
+        TaskPointer activeTaskPointer = getSaveData().getActiveTaskPointer();
+        return activeTaskPointer != null ? activeTaskPointer.getTask() : null;
     }
 
     private SaveData loadSaveData() {
@@ -115,7 +113,7 @@ public class SaveDataManager {
         if (oldTaskPointer != null) {
             OldTask oldTask = oldTaskPointer.getTask();
             String newTaskId = v0MigrationData.get(oldTaskPointer.getTaskTier()).get(oldTask.getId());
-            Task newTask = new Task(newTaskId, oldTask.getDescription(), oldTask.getItemID());
+            Task newTask = new Task(newTaskId, oldTask.getDescription(), oldTask.getItemID(), null);
             updated.setActiveTaskPointer(new TaskPointer(oldTaskPointer.getTaskTier(), newTask));
         }
 
