@@ -5,8 +5,9 @@ import com.logmaster.LogMasterPlugin;
 import com.logmaster.domain.DynamicTaskImages;
 import com.logmaster.domain.Task;
 import com.logmaster.domain.TaskTier;
-import com.logmaster.domain.verification.CollectionLogVerification;
+import com.logmaster.domain.verification.clog.CollectionLogVerification;
 import com.logmaster.persistence.SaveDataManager;
+import com.logmaster.synchronization.clog.CollectionLogService;
 import com.logmaster.task.TaskService;
 import com.logmaster.ui.generic.UIButton;
 import com.logmaster.ui.generic.UIGraphic;
@@ -52,6 +53,7 @@ public class TaskList extends UIPage {
     private final TaskService taskService;
     private final LogMasterPlugin plugin;
     private final ClientThread clientThread;
+    private final CollectionLogService collectionLogService;
 
     private final SaveDataManager saveDataManager;
 
@@ -86,13 +88,14 @@ public class TaskList extends UIPage {
 
     private final LogMasterConfig config;
 
-    public TaskList(Widget window, TaskService taskService, LogMasterPlugin plugin, ClientThread clientThread, SaveDataManager saveDataManager, LogMasterConfig config) {
+    public TaskList(Widget window, TaskService taskService, LogMasterPlugin plugin, ClientThread clientThread, SaveDataManager saveDataManager, LogMasterConfig config, CollectionLogService collectionLogService) {
         this.window = window;
         this.taskService = taskService;
         this.plugin = plugin;
         this.clientThread = clientThread;
         this.saveDataManager = saveDataManager;
         this.config = config;
+        this.collectionLogService = collectionLogService;
 
         updateBounds();
 
@@ -217,7 +220,7 @@ public class TaskList extends UIPage {
                 if (
                     activeTaskPointer != null
                     && activeTaskPointer.getTaskTier() == relevantTier
-                    && activeTaskPointer.getTask().getId() == task.getId()
+                    && activeTaskPointer.getTask().getId().equals(task.getId())
                 ) {
                     taskBg.setSprite(TASK_CURRENT_BACKGROUND_SPRITE_ID);
                 } else if (taskCompleted) {
@@ -278,7 +281,7 @@ public class TaskList extends UIPage {
                             String itemName = plugin.itemManager.getItemComposition(checkID).getName();
                             itemName = itemName.replaceFirst("^Pet\\s+", "");
                             itemName = itemName.replaceFirst("^(.)", itemName.substring(0, 1).toUpperCase());
-                            if (plugin.clogItemsManager.isObtained(checkID)) {
+                            if (collectionLogService.isItemObtained(checkID)) {
                                 unlockedItems.add(itemName);
                             } else {
                                 lockedItems.add(itemName);
@@ -305,8 +308,8 @@ public class TaskList extends UIPage {
                         List<Integer> potentialItems = new ArrayList<>();
                         for (int checkID : checkArray) {
                             if (
-                                (taskCompleted && plugin.clogItemsManager.isObtained(checkID)) ||
-                                (!taskCompleted && !plugin.clogItemsManager.isObtained(checkID))
+                                (taskCompleted && collectionLogService.isItemObtained(checkID)) ||
+                                (!taskCompleted && !collectionLogService.isItemObtained(checkID))
                              ) {
                                 potentialItems.add(checkID);
                             }
@@ -465,7 +468,7 @@ public class TaskList extends UIPage {
         topTaskIndex = Math.min(topTaskIndex, Math.max(0, totalTasks - tasksPerPageActual));
         int thumbHeight = Math.max(SCROLLBAR_THUMB_MIN_HEIGHT, (int)(scrollbarTrackHeight * ((double)tasksPerPageActual / totalTasks)));
         int maxScrollPosition = Math.max(1, totalTasks - tasksPerPageActual);
-        int thumbY = maxScrollPosition > 0 ? (int)((scrollbarTrackHeight - thumbHeight) * ((double)topTaskIndex / maxScrollPosition)) : 0;
+        int thumbY = (int)((scrollbarTrackHeight - thumbHeight) * ((double)topTaskIndex / maxScrollPosition));
         int thumbStartY = ARROW_SPRITE_HEIGHT*3 + ARROW_Y_OFFSET + thumbY;
         int thumbX = scrollbarX + 2;
         // Update middle section (variable height)

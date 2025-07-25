@@ -6,6 +6,8 @@ import com.logmaster.domain.Task;
 import com.logmaster.domain.TaskPointer;
 import com.logmaster.domain.TaskTier;
 import com.logmaster.persistence.SaveDataManager;
+import com.logmaster.synchronization.SyncService;
+import com.logmaster.synchronization.clog.CollectionLogService;
 import com.logmaster.task.TaskService;
 import com.logmaster.ui.component.TabManager;
 import com.logmaster.ui.component.TaskDashboard;
@@ -58,7 +60,11 @@ public class InterfaceManager implements MouseListener, MouseWheelListener {
     @Inject
     private SaveDataManager saveDataManager;
 
-    private SpriteDefinition[] spriteDefinitions;
+    @Inject
+    private CollectionLogService collectionLogService;
+
+    @Inject
+    private SyncService syncService;
 
     public TaskDashboard taskDashboard;
     private TaskList taskList;
@@ -68,7 +74,7 @@ public class InterfaceManager implements MouseListener, MouseWheelListener {
     private UIDropdown dropdown;
 
     public void initialise() {
-        this.spriteDefinitions = FileUtils.loadDefinitionResource(SpriteDefinition[].class, DEF_FILE_SPRITES);
+        SpriteDefinition[] spriteDefinitions = FileUtils.loadDefinitionResource(SpriteDefinition[].class, DEF_FILE_SPRITES);
         this.spriteManager.addSpriteOverrides(spriteDefinitions);
     }
 
@@ -220,12 +226,12 @@ public class InterfaceManager implements MouseListener, MouseWheelListener {
     }
 
     private void createTaskDashboard(Widget window) {
-        this.taskDashboard = new TaskDashboard(plugin, config, window, taskService, saveDataManager, plugin.clogItemsManager);
+        this.taskDashboard = new TaskDashboard(plugin, config, window, taskService, saveDataManager, syncService);
         this.taskDashboard.setVisibility(false);
     }
 
     private void createTaskList(Widget window) {
-        this.taskList = new TaskList(window, taskService, plugin, clientThread, this.saveDataManager, config);
+        this.taskList = new TaskList(window, taskService, plugin, clientThread, this.saveDataManager, config, collectionLogService);
         this.taskList.setVisibility(false);
     }
 

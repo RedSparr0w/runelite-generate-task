@@ -1,12 +1,12 @@
 package com.logmaster;
 
 import com.google.inject.Provides;
-import com.logmaster.clog.ClogItemsManager;
 import com.logmaster.domain.Task;
 import com.logmaster.domain.TaskPointer;
 import com.logmaster.domain.TaskTier;
-import com.logmaster.domain.verification.CollectionLogVerification;
+import com.logmaster.domain.verification.clog.CollectionLogVerification;
 import com.logmaster.persistence.SaveDataManager;
+import com.logmaster.synchronization.clog.CollectionLogService;
 import com.logmaster.task.TaskService;
 import com.logmaster.ui.InterfaceManager;
 import com.logmaster.ui.component.TaskOverlay;
@@ -17,7 +17,6 @@ import net.runelite.api.SoundEffectID;
 import net.runelite.api.events.*;
 import net.runelite.api.gameval.InterfaceID;
 import net.runelite.api.widgets.Widget;
-import net.runelite.client.callback.ClientThread;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.events.ConfigChanged;
@@ -29,9 +28,9 @@ import net.runelite.client.ui.overlay.OverlayManager;
 import net.runelite.client.util.LinkBrowser;
 
 import javax.inject.Inject;
-import java.util.*;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -42,12 +41,6 @@ public class LogMasterPlugin extends Plugin {
 
 	@Inject
 	private Client client;
-
-	@Inject
-	private ClientThread clientThread;
-    
-	@Inject
-	private ScheduledExecutorService scheduledExecutorService;
 
 	@Inject
 	private LogMasterConfig config;
@@ -74,11 +67,13 @@ public class LogMasterPlugin extends Plugin {
 	public ItemManager itemManager;
 
 	@Inject
-	public ClogItemsManager clogItemsManager;
+	public CollectionLogService collectionLogService;
 
 	@Override
 	protected void startUp()
 	{
+		collectionLogService.startUp();
+
 		mouseManager.registerMouseWheelListener(interfaceManager);
 		mouseManager.registerMouseListener(interfaceManager);
 		interfaceManager.initialise();
@@ -89,6 +84,8 @@ public class LogMasterPlugin extends Plugin {
 
 	@Override
 	protected void shutDown() {
+		collectionLogService.shutDown();
+
 		mouseManager.unregisterMouseWheelListener(interfaceManager);
 		mouseManager.unregisterMouseListener(interfaceManager);
 		this.overlayManager.remove(this.taskOverlay);
@@ -112,12 +109,6 @@ public class LogMasterPlugin extends Plugin {
 			case LOGIN_SCREEN:
 				saveDataManager.save();
 				break;
-			// When hopping, we clear the collection log to prevent stale data
-			case HOPPING:
-			case LOGGING_IN:
-			case CONNECTION_LOST:
-				clogItemsManager.clear();
-				break;
 			default:
 				break;
 		}
@@ -125,17 +116,14 @@ public class LogMasterPlugin extends Plugin {
 
 	@Subscribe
 	public void onWidgetLoaded(WidgetLoaded e) {
-		if(e.getGroupId() == InterfaceID.COLLECTION) {
+		if (e.getGroupId() == InterfaceID.COLLECTION) {
 			interfaceManager.handleCollectionLogOpen();
-			// Refresh the collection log after a short delay to ensure it is fully loaded
-			scheduledExecutorService.schedule(() -> clientThread.invokeAtTickEnd(() -> { clogItemsManager.refresh(); }),
-				600, TimeUnit.MILLISECONDS);
 		}
 	}
 
 	@Subscribe
 	public void onWidgetClosed(WidgetClosed e) {
-		if(e.getGroupId() == InterfaceID.COLLECTION) {
+		if (e.getGroupId() == InterfaceID.COLLECTION) {
 			interfaceManager.handleCollectionLogClose();
 		}
 	}
@@ -162,7 +150,7 @@ public class LogMasterPlugin extends Plugin {
 		this.client.playSoundEffect(SoundEffectID.UI_BOOP);
 		List<Task> uniqueTasks = findAvailableTasks();
 
-		if(uniqueTasks.size() <= 0) {
+		if (uniqueTasks.isEmpty()) {
 			client.addChatMessage(ChatMessageType.GAMEMESSAGE, "", "No more tasks left. Looks like you win?", "");
 			playFailSound();
 
@@ -293,14 +281,5 @@ public class LogMasterPlugin extends Plugin {
 
 	public void visitFaq() {
 		LinkBrowser.browse("https://docs.google.com/document/d/e/2PACX-1vTHfXHzMQFbt_iYAP-O88uRhhz3wigh1KMiiuomU7ftli-rL_c3bRqfGYmUliE1EHcIr3LfMx2UTf2U/pub");
-	}
-
-	@Subscribe
-	public void onScriptPreFired(ScriptPreFired preFired) {
-		// This is fired when the collection log search is opened
-		// This will allow us to see all the item IDs of obtained items
-		if (preFired.getScriptId() == 4100){
-			clogItemsManager.update(preFired);
-		}
 	}
 }

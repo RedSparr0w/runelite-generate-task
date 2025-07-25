@@ -17,8 +17,6 @@ public interface LogMasterConfig extends Config
 
     String SAVE_DATA_KEY = "save-data";
 
-    String BACKUP_SAVE_DATA_KEY = "backup-save-data";
-
     @Range(
             min = 1000,
             max = 10000
