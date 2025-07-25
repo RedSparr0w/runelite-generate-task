@@ -5,6 +5,7 @@ import com.logmaster.domain.Task;
 import com.logmaster.domain.TaskTier;
 import com.logmaster.synchronization.clog.CollectionLogVerifier;
 import com.logmaster.synchronization.diary.AchievementDiaryVerifier;
+import com.logmaster.synchronization.skill.SkillVerifier;
 import com.logmaster.task.TaskService;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
@@ -35,10 +36,14 @@ public class SyncService {
     @Inject
     private AchievementDiaryVerifier achievementDiaryVerifier;
 
+    @Inject
+    private SkillVerifier skillVerifier;
+
     private @NonNull Verifier[] getVerifiers() {
         return new Verifier[]{
             this.collectionLogVerifier,
-            this.achievementDiaryVerifier
+            this.achievementDiaryVerifier,
+            this.skillVerifier
         };
     }
 

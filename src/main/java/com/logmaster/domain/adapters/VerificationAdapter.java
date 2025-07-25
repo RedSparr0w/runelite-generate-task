@@ -5,6 +5,7 @@ import com.logmaster.domain.verification.Verification;
 import com.logmaster.domain.verification.VerificationMethod;
 import com.logmaster.domain.verification.clog.CollectionLogVerification;
 import com.logmaster.domain.verification.diary.AchievementDiaryVerification;
+import com.logmaster.domain.verification.skill.SkillVerification;
 import com.logmaster.util.EnumUtils;
 import lombok.extern.slf4j.Slf4j;
 
@@ -35,6 +36,9 @@ public class VerificationAdapter implements JsonDeserializer<Verification> {
 
             case ACHIEVEMENT_DIARY:
                 return context.deserialize(jsonElement, AchievementDiaryVerification.class);
+
+            case SKILL:
+                return context.deserialize(jsonElement, SkillVerification.class);
         }
 
         log.error("Unhandled verification method '{}'", method);

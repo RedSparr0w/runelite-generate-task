@@ -8,6 +8,7 @@ import com.logmaster.domain.verification.Verification;
 import com.logmaster.domain.verification.VerificationMethod;
 import com.logmaster.domain.verification.diary.DiaryDifficulty;
 import com.logmaster.domain.verification.diary.DiaryRegion;
+import net.runelite.api.Skill;
 import net.runelite.http.api.gson.ColorTypeAdapter;
 import net.runelite.http.api.gson.InstantTypeAdapter;
 
@@ -27,7 +28,8 @@ public class GsonOverride {
                 .registerTypeAdapter(Verification.class, new VerificationAdapter())
                 .registerTypeAdapter(VerificationMethod.class, new EnumAdapter<>(VerificationMethod.class))
                 .registerTypeAdapter(DiaryRegion.class, new EnumAdapter<>(DiaryRegion.class))
-                .registerTypeAdapter(DiaryDifficulty.class, new EnumAdapter<>(DiaryDifficulty.class));
+                .registerTypeAdapter(DiaryDifficulty.class, new EnumAdapter<>(DiaryDifficulty.class))
+                .registerTypeAdapter(Skill.class, new EnumAdapter<>(Skill.class));
 
         GSON = gsonBuilder.create();
     }
