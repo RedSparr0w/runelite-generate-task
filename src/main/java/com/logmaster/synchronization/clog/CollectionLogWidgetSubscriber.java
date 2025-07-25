@@ -63,6 +63,7 @@ public class CollectionLogWidgetSubscriber {
         if (hasClogScriptFired && hasBufferPassed) {
             tickCollectionLogScriptFired = -1;
             log.debug("Clog items script has fired");
+            isAutoClogRetrieval = false;
         }
     }
 
