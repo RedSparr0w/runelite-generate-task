@@ -2,6 +2,7 @@ package com.logmaster.domain.adapters;
 
 import com.google.gson.*;
 import com.logmaster.util.EnumUtils;
+import com.logmaster.util.StringUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -19,6 +20,6 @@ public class EnumAdapter<T extends Enum<T>> implements JsonDeserializer<T>, Json
 
     @Override
     public JsonElement serialize(T t, Type type, JsonSerializationContext context) {
-        return context.serialize(t.toString(), String.class);
+        return context.serialize(StringUtils.kebabCase(t.name()), String.class);
     }
 }
