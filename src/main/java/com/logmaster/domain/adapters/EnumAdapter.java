@@ -9,11 +9,16 @@ import java.lang.reflect.Type;
 
 @Slf4j
 @RequiredArgsConstructor
-public class EnumAdapter<T extends Enum<T>> implements JsonDeserializer<T> {
+public class EnumAdapter<T extends Enum<T>> implements JsonDeserializer<T>, JsonSerializer<T> {
     private final Class<T> clazz;
 
     @Override
     public T deserialize(JsonElement jsonElement, Type type, JsonDeserializationContext context) throws JsonParseException {
         return EnumUtils.fromString(clazz, jsonElement.getAsString());
+    }
+
+    @Override
+    public JsonElement serialize(T t, Type type, JsonSerializationContext context) {
+        return context.serialize(t.toString(), String.class);
     }
 }
