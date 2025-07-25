@@ -28,7 +28,7 @@ import static com.logmaster.ui.InterfaceConstants.*;
 @Slf4j
 public class TaskList extends UIPage {
     private final int OFFSET_X = 0;
-    private final int OFFSET_Y = 22;
+    private final int OFFSET_Y = 21;
     private final int TASK_WIDTH = 300;
     private final int TASK_HEIGHT = 50;
     private final int COLUMN_SPACING = 24;
