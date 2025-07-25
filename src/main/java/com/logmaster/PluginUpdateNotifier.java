@@ -23,7 +23,7 @@ public class PluginUpdateNotifier {
 
     private static final String UPDATE_MESSAGE =
             "<colHIGHLIGHT>Collection Log Master v" + PLUGIN_VERSION + "<br>"
-            + "<colHIGHLIGHT>* Added task synchronization";
+            + "<colHIGHLIGHT>- Added task synchronization";
 
     @Inject
     EventBus eventBus;
