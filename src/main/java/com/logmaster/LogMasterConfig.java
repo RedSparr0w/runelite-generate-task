@@ -17,6 +17,8 @@ public interface LogMasterConfig extends Config
 
     String SAVE_DATA_KEY = "save-data";
 
+    String PLUGIN_VERSION_KEY = "plugin-version";
+
     @Range(
             min = 1000,
             max = 10000

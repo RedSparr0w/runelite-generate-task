@@ -69,10 +69,14 @@ public class LogMasterPlugin extends Plugin {
 	@Inject
 	public CollectionLogService collectionLogService;
 
+	@Inject
+	public PluginUpdateNotifier pluginUpdateNotifier;
+
 	@Override
 	protected void startUp()
 	{
 		collectionLogService.startUp();
+		pluginUpdateNotifier.startUp();
 
 		mouseManager.registerMouseWheelListener(interfaceManager);
 		mouseManager.registerMouseListener(interfaceManager);
@@ -85,6 +89,7 @@ public class LogMasterPlugin extends Plugin {
 	@Override
 	protected void shutDown() {
 		collectionLogService.shutDown();
+		pluginUpdateNotifier.shutDown();
 
 		mouseManager.unregisterMouseWheelListener(interfaceManager);
 		mouseManager.unregisterMouseListener(interfaceManager);
