@@ -57,7 +57,6 @@ public class SaveDataManager {
                 return GSON.fromJson(json, SaveData.class);
             }
 
-            this.saveBackup(json);
             return this.update(json);
         } catch (JsonSyntaxException e) {
             log.error("Unable to parse save data JSON", e);
@@ -118,9 +117,5 @@ public class SaveDataManager {
         }
 
         return updated;
-    }
-
-    private void saveBackup(String json) {
-        this.configManager.setRSProfileConfiguration(CONFIG_GROUP, BACKUP_SAVE_DATA_KEY, json);
     }
 }
