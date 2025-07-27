@@ -1,40 +1,50 @@
 package com.logmaster.ui;
 
-import com.google.gson.Gson;
 import com.logmaster.LogMasterConfig;
 import com.logmaster.LogMasterPlugin;
 import com.logmaster.domain.Task;
 import com.logmaster.domain.TaskTier;
-import com.logmaster.persistence.SaveDataManager;
+import com.logmaster.synchronization.SyncService;
+import com.logmaster.synchronization.clog.CollectionLogService;
 import com.logmaster.task.TaskService;
+import com.logmaster.ui.component.TabManager;
 import com.logmaster.ui.component.TaskDashboard;
 import com.logmaster.ui.component.TaskList;
 import com.logmaster.ui.generic.UICheckBox;
 import com.logmaster.ui.generic.dropdown.UIDropdown;
 import com.logmaster.ui.generic.dropdown.UIDropdownOption;
-import com.logmaster.ui.generic.UIButton;
-import com.logmaster.ui.generic.UIGraphic;
+import com.logmaster.util.EventBusSubscriber;
 import com.logmaster.util.FileUtils;
 import net.runelite.api.Client;
 import net.runelite.api.SoundEffectID;
+import net.runelite.api.events.GameTick;
+import net.runelite.api.events.ScriptPostFired;
+import net.runelite.api.events.WidgetClosed;
+import net.runelite.api.events.WidgetLoaded;
 import net.runelite.api.gameval.InterfaceID;
 import net.runelite.api.widgets.Widget;
 import net.runelite.api.widgets.WidgetType;
 import net.runelite.client.callback.ClientThread;
+import net.runelite.client.eventbus.Subscribe;
+import net.runelite.client.events.ConfigChanged;
 import net.runelite.client.game.SpriteManager;
+import net.runelite.client.input.MouseListener;
+import net.runelite.client.input.MouseManager;
+import net.runelite.client.input.MouseWheelListener;
 
 import javax.inject.Inject;
 import javax.inject.Singleton;
+import java.awt.event.MouseEvent;
 import java.awt.event.MouseWheelEvent;
-import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
-import static com.logmaster.ui.InterfaceConstants.*;
+import static com.logmaster.LogMasterConfig.CONFIG_GROUP;
+import static com.logmaster.ui.InterfaceConstants.DEF_FILE_SPRITES;
 
 @Singleton
-public class InterfaceManager {
+public class InterfaceManager extends EventBusSubscriber implements MouseListener, MouseWheelListener {
     private static final int COLLECTION_LOG_TAB_DROPDOWN_WIDGET_ID = 40697929;
+    private static final int COLLECTION_LOG_SETUP_SCRIPT_ID = 7797;
 
     @Inject
     private Client client;
@@ -48,141 +58,200 @@ public class InterfaceManager {
     @Inject
     private LogMasterPlugin plugin;
 
-    @Inject
-    private TaskService taskService;
+	@Inject
+	private MouseManager mouseManager;
 
     @Inject
     private SpriteManager spriteManager;
 
     @Inject
-    private Gson gson;
+    private CollectionLogService collectionLogService;
 
     @Inject
-    private SaveDataManager saveDataManager;
+    private SyncService syncService;
 
+    @Inject
+    private TaskService taskService;
 
-    private SpriteDefinition[] spriteDefinitions;
-
-    private TaskDashboard taskDashboard;
+    public TaskDashboard taskDashboard;
     private TaskList taskList;
+    private TabManager tabManager;
 
-    private List<UIButton> tabs;
-    private UIButton taskListTab;
-    private UIButton taskDashboardTab;
     private UICheckBox taskDashboardCheckbox;
     private UIDropdown dropdown;
 
-    public void initialise() {
-        this.spriteDefinitions = FileUtils.loadDefinitionResource(SpriteDefinition[].class, DEF_FILE_SPRITES, gson);
+    public void startUp() {
+        super.startUp();
+
+        mouseManager.registerMouseListener(this);
+        mouseManager.registerMouseWheelListener(this);
+
+        SpriteDefinition[] spriteDefinitions = FileUtils.loadDefinitionResource(SpriteDefinition[].class, DEF_FILE_SPRITES);
         this.spriteManager.addSpriteOverrides(spriteDefinitions);
     }
 
-    public void updateAfterConfigChange() {
-        hideTabs();
-        updateTabs();
-        if (this.config.hideBelow() == TaskTier.MASTER && this.saveDataManager.getSaveData().getSelectedTier() == TaskTier.MASTER && !this.taskDashboard.isVisible()) {
-            this.taskListTab.setSprites(TASKLIST_TAB_HOVER_SPRITE_ID);
-        }
-        if (this.taskDashboard != null && isTaskDashboardEnabled()) {
-            showTabs();
-            if (this.saveDataManager.getSaveData().getSelectedTier() != null && Arrays.asList(TaskTier.values()).indexOf(this.saveDataManager.getSaveData().getSelectedTier()) < Arrays.asList(TaskTier.values()).indexOf(this.config.hideBelow())) {
-                activateTaskDashboard();
-            }
-            this.taskDashboard.updatePercentages();
-        }
+    public void shutDown() {
+        super.shutDown();
+
+        mouseManager.unregisterMouseListener(this);
+        mouseManager.unregisterMouseWheelListener(this);
     }
 
-    public void handleCollectionLogOpen() {
-        Widget window = client.getWidget(InterfaceID.Collection.CONTENT);
-        Widget dashboardTabWidget = window.createChild(-1, WidgetType.GRAPHIC);
-        taskDashboardTab = new UIButton(dashboardTabWidget);
-        taskDashboardTab.setSprites(DASHBOARD_TAB_SPRITE_ID, DASHBOARD_TAB_HOVER_SPRITE_ID);
-        taskDashboardTab.setSize(95, 21);
-        taskDashboardTab.setPosition(10, 0);
-        taskDashboardTab.addAction("View <col=ff9040>Dashboard</col>", this::activateTaskDashboard);
-        taskDashboardTab.setVisibility(false);
+	@Subscribe
+	public void onConfigChanged(ConfigChanged e) {
+        if (!e.getGroup().equals(CONFIG_GROUP)) {
+			return;
+		}
 
-        tabs = new ArrayList<>();
-
-        int currentTabX = 110;
-
-        for (int i = 0; i < 5; i++) {
-            Widget tabWiget = window.createChild(-1, WidgetType.GRAPHIC);
-            UIButton tab = new UIButton(tabWiget);
-            tab.setSize(66, 21);
-            tab.setPosition(currentTabX, 0);
-            tab.setVisibility(false);
-            currentTabX += 71;
-            tabs.add(tab);
+        if (this.taskDashboard == null || !isTaskDashboardEnabled()) {
+            return;
         }
 
-        Widget tabWiget = window.createChild(-1, WidgetType.GRAPHIC);
-        taskListTab = new UIButton(tabWiget);
-        taskListTab.setSize(95, 21);
-        taskListTab.setPosition(110, 0);
-        taskListTab.setSprites(TASKLIST_TAB_SPRITE_ID, TASKLIST_TAB_HOVER_SPRITE_ID);
-        taskListTab.setVisibility(false);
-        taskListTab.addAction("View <col=ff9040>Task List</col>", () -> {
-            taskDashboardTab.setSprites(DASHBOARD_TAB_SPRITE_ID, DASHBOARD_TAB_HOVER_SPRITE_ID);
-            if (this.saveDataManager.getSaveData().getSelectedTier() != TaskTier.MASTER) {
-                this.taskList.goToTop();
-                this.saveDataManager.getSaveData().setSelectedTier(TaskTier.MASTER);
-                this.saveDataManager.save();
-            }
-            updateTabs();
-            taskListTab.setSprites(TASKLIST_TAB_HOVER_SPRITE_ID);
-            this.taskDashboard.setVisibility(false);
-            this.taskList.refreshTasks(0);
-            this.taskList.setVisibility(true);
-        });
+        if (tabManager != null) {
+            tabManager.updateTabs();
 
-        Widget dividerWidget = window.createChild(-1, WidgetType.GRAPHIC);
-        UIGraphic divider = new UIGraphic(dividerWidget);
-        divider.setSprite(DIVIDER_SPRITE_ID);
-        divider.setSize(480, 1);
-        divider.setPosition(10, 20);
+            List<TaskTier> visibleTiers = taskService.getVisibleTiers();
+            TaskTier activeTier = plugin.getSelectedTier();
+            if (activeTier != null && visibleTiers.contains(activeTier)) {
+                tabManager.activateTaskDashboard();
+            }
+        }
+
+        taskDashboard.updatePercentages();
+        tabManager.onConfigChanged();
+	}
+
+	@Subscribe
+	public void onWidgetLoaded(WidgetLoaded e) {
+		if (e.getGroupId() != InterfaceID.COLLECTION) {
+			return;
+		}
+
+        Widget window = client.getWidget(InterfaceID.Collection.CONTENT);
 
         createTaskDashboard(window);
         createTaskList(window);
+        createTabManager(window);
         createTaskCheckbox();
-        updateTabs();
 
+        this.tabManager.updateTabs();
         this.taskDashboard.setVisibility(false);
-    }
+	}
 
-    public void handleCollectionLogClose() {
+	@Subscribe
+	public void onWidgetClosed(WidgetClosed e) {
+		if (e.getGroupId() != InterfaceID.COLLECTION) {
+			return;
+		}
+
         this.taskDashboard.setVisibility(false);
         this.taskList.setVisibility(false);
-        hideTabs();
-    }
+        tabManager.hideTabs();
+	}
 
-    public void handleCollectionLogScriptRan() {
+	@Subscribe
+	public void onScriptPostFired(ScriptPostFired scriptPostFired) {
+		if (scriptPostFired.getScriptId() != COLLECTION_LOG_SETUP_SCRIPT_ID) {
+			return;
+		}
+
         if (this.dropdown != null) {
             this.dropdown.cleanup();
             this.dropdown = null;
         }
 
         createTaskDropdownOption();
-    }
+	}
+
+	@Subscribe
+	public void onGameTick(GameTick e) {
+        if (this.taskList != null) {
+            taskList.updateBounds();
+        }
+        if (this.taskDashboard != null) {
+            taskDashboard.updateBounds();
+        }
+        if (this.tabManager != null) {
+            tabManager.updateBounds();
+        }
+        if (this.taskDashboardCheckbox != null) {
+            Widget window = client.getWidget(621, 88);
+            if (window != null) {
+                taskDashboardCheckbox.alignToRightEdge(window, 35, 10);
+            }
+        }
+	}
 
     public boolean isDashboardOpen() {
         return this.taskDashboard != null && this.taskDashboard.isVisible();
     }
 
-    public void updateTaskListBounds() {
-        if (this.taskList != null) {
-            taskList.updateBounds();
-        }
-    }
-
     public void handleMouseWheel(MouseWheelEvent event) {
-        if(this.taskList != null) {
+        if (this.taskList != null) {
             taskList.handleWheel(event);
         }
     }
 
-    public void disableGenerateTaskButton() {
-        this.taskDashboard.disableGenerateTask();
+    public void handleMousePress(int mouseX, int mouseY) {
+        if (this.taskList != null && this.taskList.isVisible()) {
+            taskList.handleMousePress(mouseX, mouseY);
+        }
+    }
+
+    public void handleMouseDrag(int mouseX, int mouseY) {
+        if (this.taskList != null && this.taskList.isVisible()) {
+            taskList.handleMouseDrag(mouseX, mouseY);
+        }
+    }
+
+    public void handleMouseRelease() {
+        if (this.taskList != null) {
+            taskList.handleMouseRelease();
+        }
+    }
+
+    @Override
+    public MouseWheelEvent mouseWheelMoved(MouseWheelEvent event) {
+        handleMouseWheel(event);
+        return event;
+    }
+
+    @Override
+    public MouseEvent mouseClicked(MouseEvent event) {
+        return event;
+    }
+
+    @Override
+    public MouseEvent mousePressed(MouseEvent event) {
+        handleMousePress(event.getX(), event.getY());
+        return event;
+    }
+
+    @Override
+    public MouseEvent mouseReleased(MouseEvent event) {
+        handleMouseRelease();
+        return event;
+    }
+
+    @Override
+    public MouseEvent mouseDragged(MouseEvent event) {
+        handleMouseDrag(event.getX(), event.getY());
+        return event;
+    }
+
+    @Override
+    public MouseEvent mouseMoved(MouseEvent event) {
+        return event;
+    }
+
+    @Override
+    public MouseEvent mouseEntered(MouseEvent event) {
+        return event;
+    }
+
+    @Override
+    public MouseEvent mouseExited(MouseEvent event) {
+        return event;
     }
 
     private void createTaskDropdownOption() {
@@ -194,6 +263,21 @@ public class InterfaceManager {
         this.dropdown = new UIDropdown(container);
         this.dropdown.addOption("Tasks", "View Tasks Dashboard");
         this.dropdown.setOptionEnabledListener(this::toggleTaskDashboard);
+    }
+
+    private void createTabManager(Widget window) {
+        this.tabManager = new TabManager(window, config, plugin);
+        this.tabManager.setComponents(taskDashboard, taskList);
+    }
+
+    private void createTaskDashboard(Widget window) {
+        this.taskDashboard = new TaskDashboard(plugin, config, window, syncService, taskService, client);
+        this.taskDashboard.setVisibility(false);
+    }
+
+    private void createTaskList(Widget window) {
+        this.taskList = new TaskList(window, plugin, clientThread, config, collectionLogService, taskService);
+        this.taskList.setVisibility(false);
     }
 
     private void createTaskCheckbox() {
@@ -210,6 +294,8 @@ public class InterfaceManager {
             taskDashboardCheckbox.setEnabled(false);
             taskDashboardCheckbox.setText("Task Dashboard");
             labelWidget.setPos(375, 10);
+                    
+
             taskDashboardCheckbox.setToggleListener((UICheckBox src) -> {
                 if (taskDashboardCheckbox.isEnabled()) {
                     this.dropdown.setEnabledOption("Tasks");
@@ -220,73 +306,38 @@ public class InterfaceManager {
         }
     }
 
-    private void updateTabs() {
-        int tabIndex = 0;
-        for (TaskTier tier : TaskTier.values()) {
-            if (tabIndex > 0 || tier == config.hideBelow()) {
-                if (tabs == null) {
-                    return;
-                }
-                if (this.saveDataManager.getSaveData().getSelectedTier() == tier && !this.taskDashboard.isVisible()) {
-                    tabs.get(tabIndex).setSprites(tier.tabSpriteHoverId);
-                } else {
-                    tabs.get(tabIndex).setSprites(tier.tabSpriteId, tier.tabSpriteHoverId);
-                }
-                int finalTabIndex = tabIndex;
-                tabs.get(tabIndex).clearActions();
-                tabs.get(tabIndex).setSize(66, 21);
-                tabs.get(tabIndex).addAction(String.format("View <col=ff9040>%s Task List</col>", tier.displayName), () -> {
-                    taskDashboardTab.setSprites(DASHBOARD_TAB_SPRITE_ID, DASHBOARD_TAB_HOVER_SPRITE_ID);
-                    if (this.saveDataManager.getSaveData().getSelectedTier() != tier) {
-                        this.taskList.goToTop();
-                        this.saveDataManager.getSaveData().setSelectedTier(tier);
-                        this.saveDataManager.save();
-                    }
-                    updateTabs();
-                    tabs.get(finalTabIndex).setSprites(tier.tabSpriteHoverId);
-                    this.taskDashboard.setVisibility(false);
-                    this.taskList.refreshTasks(0);
-                    this.taskList.setVisibility(true);
-                });
-                tabIndex++;
-            }
-        }
-    }
-
-    private void createTaskDashboard(Widget window) {
-        this.taskDashboard = new TaskDashboard(plugin, config, window, taskService, saveDataManager);
-        this.taskDashboard.setVisibility(false);
-    }
-
-    private void createTaskList(Widget window) {
-        this.taskList = new TaskList(window, taskService, plugin, clientThread, this.saveDataManager);
-        this.taskList.setVisibility(false);
-    }
-
     private void toggleTaskDashboard(UIDropdownOption src) {
         if(this.taskDashboard == null) return;
 
-        if (saveDataManager.getSaveData().getActiveTaskPointer() != null) {
-            this.taskDashboard.setTask(this.saveDataManager.getSaveData().getActiveTaskPointer().getTask().getDescription(), this.saveDataManager.getSaveData().getActiveTaskPointer().getTask().getItemID(), null);
+        Task activeTask = taskService.getActiveTask();
+        if (activeTask != null) {
+            this.taskDashboard.setTask(activeTask.getName(), activeTask.getDisplayItemId(), null);
             this.taskDashboard.disableGenerateTask();
         } else {
-            plugin.nullCurrentTask();
+            clearCurrentTask();
         }
 
         boolean enabled = isTaskDashboardEnabled();
+        
+        
         this.taskDashboardCheckbox.setEnabled(enabled);
-        for (Widget c : client.getWidget(InterfaceID.Collection.CONTENT).getStaticChildren()) {
-            c.setHidden(enabled);
+        Widget contentWidget = client.getWidget(InterfaceID.Collection.CONTENT);
+        if (contentWidget != null) {
+            for (Widget c : contentWidget.getStaticChildren()) {
+                c.setHidden(enabled);
+            }
         }
-        client.getWidget(InterfaceID.Collection.SEARCH_TITLE).setHidden(enabled);
+        Widget searchTitleWidget = client.getWidget(InterfaceID.Collection.SEARCH_TITLE);
+        if (searchTitleWidget != null) {
+            searchTitleWidget.setHidden(enabled);
+        }
 
-        if (isTaskDashboardEnabled()) {
-            activateTaskDashboard();
+        if (enabled) {
+            this.tabManager.activateTaskDashboard();
         } else {
             this.taskDashboard.setVisibility(false);
             this.taskList.setVisibility(false);
-
-            hideTabs();
+            this.tabManager.hideTabs();
         }
 
         // *Boop*
@@ -297,54 +348,14 @@ public class InterfaceManager {
         return this.dropdown != null && this.dropdown.getEnabledOption().getText().equals("Tasks");
     }
 
-    private void hideTabs() {
-        if (this.taskDashboardTab != null) {
-            this.taskDashboardTab.setVisibility(false);
-        }
-        if (this.tabs != null) {
-            this.tabs.forEach(t -> t.setVisibility(false));
-        }
-        if (this.taskListTab != null) {
-            this.taskListTab.setVisibility(false);
-        }
-    }
-
-    private void showTabs() {
-        if (this.taskDashboardTab != null) {
-            this.taskDashboardTab.setVisibility(true);
-        }
-        if (this.config.hideBelow() == TaskTier.MASTER) {
-            this.taskListTab.setVisibility(true);
-        } else {
-            int tabIndex = 0;
-            for (TaskTier tier : TaskTier.values()) {
-                if (tabIndex > 0 || tier == config.hideBelow()) {
-                    this.tabs.get(tabIndex).setVisibility(true);
-                    tabIndex++;
-                }
-            }
-        }
-    }
-
-    private void activateTaskDashboard() {
-        this.taskDashboardTab.setSprites(DASHBOARD_TAB_HOVER_SPRITE_ID);
-        this.taskList.setVisibility(false);
-        this.taskDashboard.setVisibility(true);
-        this.taskListTab.setSprites(TASKLIST_TAB_SPRITE_ID, TASKLIST_TAB_HOVER_SPRITE_ID);
-        updateTabs();
-        showTabs();
-    }
-
-    public void rollTask(String description, int itemID, List<Task> tasks) {
-        this.taskDashboard.setTask(description, itemID, tasks);
-        this.taskDashboard.disableGenerateTask(false);
-        this.taskList.refreshTasks(0);
-        this.taskDashboard.updatePercentages();
-    }
-
     public void completeTask() {
+        boolean wasDashboardVisible = this.taskDashboard.isVisible();
         this.taskDashboard.updatePercentages();
         taskList.refreshTasks(0);
+        // Restore previous visibility state
+        this.taskDashboard.setVisibility(wasDashboardVisible);
+        this.taskList.setVisibility(!wasDashboardVisible);
+        this.tabManager.showTabs();
     }
 
     public void clearCurrentTask() {

@@ -1,9 +1,8 @@
 package com.logmaster.ui.component;
 
 import com.logmaster.LogMasterConfig;
-import com.logmaster.LogMasterPlugin;
 import com.logmaster.domain.Task;
-import com.logmaster.persistence.SaveDataManager;
+import com.logmaster.task.TaskService;
 import com.logmaster.ui.InterfaceManager;
 import net.runelite.client.config.RuneLiteConfig;
 import net.runelite.client.game.ItemManager;
@@ -11,11 +10,7 @@ import net.runelite.client.ui.overlay.Overlay;
 
 import javax.inject.Inject;
 import javax.inject.Singleton;
-import java.awt.Color;
-import java.awt.Dimension;
-import java.awt.FontMetrics;
-import java.awt.Graphics2D;
-import java.awt.Image;
+import java.awt.*;
 
 @Singleton
 public class TaskOverlay extends Overlay {
@@ -32,9 +27,6 @@ public class TaskOverlay extends Overlay {
     private static final int MAX_BYTE = 255;
 
     @Inject
-    private LogMasterPlugin plugin;
-
-    @Inject
     private LogMasterConfig config;
 
     @Inject
@@ -47,18 +39,18 @@ public class TaskOverlay extends Overlay {
     private InterfaceManager interfaceManager;
 
     @Inject
-    private SaveDataManager saveDataManager;
+    private TaskService taskService;
 
     @Override
     public Dimension render(Graphics2D g) {
         try {
-            Task currentTask = saveDataManager.currentTask();
-            if (!config.displayCurrentTaskOverlay() || currentTask == null || interfaceManager.isDashboardOpen()) {
+            Task activeTask = taskService.getActiveTask();
+            if (!config.displayCurrentTaskOverlay() || activeTask == null || interfaceManager.isDashboardOpen()) {
                 return EMPTY;
             }
 
-            Image icon = itemManager.getImage(currentTask.getItemID());
-            String task = currentTask.getDescription();
+            Image icon = itemManager.getImage(activeTask.getDisplayItemId());
+            String task = activeTask.getName();
 
 
             FontMetrics fm = g.getFontMetrics();
