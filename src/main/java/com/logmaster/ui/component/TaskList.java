@@ -380,9 +380,9 @@ public class TaskList extends UIPage {
             return;
         }
 
-        Widget collectionLogWrapper = window.getParent();
-        wrapperX = collectionLogWrapper.getRelativeX();
-        wrapperY = collectionLogWrapper.getRelativeY();
+        Widget wrapper = window.getParent();
+        wrapperX = wrapper.getRelativeX();
+        wrapperY = wrapper.getRelativeY();
         wrapperHeight = window.getHeight() - OFFSET_Y;
         windowX = window.getRelativeX();
         windowY = window.getRelativeY();

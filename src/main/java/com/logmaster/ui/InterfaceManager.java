@@ -177,6 +177,9 @@ public class InterfaceManager extends EventBusSubscriber implements MouseListene
         if (this.tabManager != null) {
             tabManager.updateBounds();
         }
+        if (this.taskInfo != null) {
+            taskInfo.updateBounds();
+        }
         if (this.taskDashboardCheckbox != null) {
             Widget window = client.getWidget(621, 88);
             if (window != null) {
@@ -287,7 +290,6 @@ public class InterfaceManager extends EventBusSubscriber implements MouseListene
         this.taskInfo = new TaskInfo(window, plugin, clientThread, config, collectionLogService, taskService);
         this.taskInfo.setComponents(taskDashboard, taskList, tabManager);
         this.taskList.setTaskInfoComponent(taskInfo);
-        this.taskInfo.setVisibility(false);
     }
 
     private void createTaskCheckbox() {
@@ -345,6 +347,7 @@ public class InterfaceManager extends EventBusSubscriber implements MouseListene
         if (enabled) {
             this.tabManager.activateTaskDashboard();
         } else {
+            this.taskInfo.setVisibility(false);
             this.taskDashboard.setVisibility(false);
             this.taskList.setVisibility(false);
             this.tabManager.hideTabs();

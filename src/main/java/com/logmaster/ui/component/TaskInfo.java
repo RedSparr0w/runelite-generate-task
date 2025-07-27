@@ -16,6 +16,7 @@ import com.logmaster.ui.component.TaskList;
 import com.logmaster.ui.component.TabManager;
 import com.logmaster.ui.component.TaskDashboard;
 import lombok.extern.slf4j.Slf4j;
+import net.runelite.api.FontID;
 import net.runelite.api.widgets.ItemQuantityMode;
 import net.runelite.api.widgets.Widget;
 import net.runelite.api.widgets.WidgetType;
@@ -23,6 +24,7 @@ import net.runelite.client.callback.ClientThread;
 
 import java.awt.*;
 import java.awt.event.MouseWheelEvent;
+import java.awt.image.BufferedImage;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -40,9 +42,20 @@ public class TaskInfo extends UIPage {
     private final CollectionLogService collectionLogService;
     private final TaskService taskService;
 
+    private final static int BUTTON_HEIGHT = 30;
+    private final static int BUTTON_WIDTH = 68;
+    private final static int LARGE_BUTTON_WIDTH = 140;
+    private final static int BACK_BUTTON_SPRITE_ID = -20037;
+    private final static int BACK_BUTTON_HOVER_SPRITE_ID = -20038;
+    private final static int WIKI_BUTTON_SPRITE_ID = -20039;
+    private final static int WIKI_BUTTON_HOVER_SPRITE_ID = -20040;
+    private final static int COMPLETE_TASK_SPRITE_ID = -20000;
+    private final static int COMPLETE_TASK_HOVER_SPRITE_ID = -20002;
+
     private TaskDashboard taskDashboard;
     private TaskList taskList;
     private TabManager tabManager;
+    private UIPage previousVisiblePage = null;
 
     private Rectangle bounds = new Rectangle();
     private int windowWidth = 480;
@@ -75,31 +88,236 @@ public class TaskInfo extends UIPage {
     @Override
     public void setVisibility(boolean visible) {
         super.setVisibility(visible);
-        this.taskDashboard.setVisibility(!visible);
-        this.taskList.setVisibility(!visible);
-        // this.tabManager.setVisibility(!visible);
+        if (visible) {
+            this.previousVisiblePage = this.taskDashboard.isVisible() ? this.taskDashboard : this.taskList;
+            this.previousVisiblePage.setVisibility(false);
+            this.tabManager.hideTabs();
+        } else {
+            this.previousVisiblePage.setVisibility(true);
+            this.tabManager.showTabs();
+        }
     }
+
+    private UILabel titleLabel;
+    private UILabel tipLabel;
+    private UILabel tierLabel;
+    private UIButton wikiBtn;
+    private UIButton closeBtn;
+    private UIButton completeBtn;
+    private UILabel progressLabel;
+    private List<UIGraphic> taskIcons = new ArrayList<>();
 
     public void showTask(String taskId) {
         TaskTier relevantTier = plugin.getSelectedTier();
         if (relevantTier == null) {
             relevantTier = TaskTier.MASTER;
         }
-        // TODO: Implement logic to find the task by ID
         Task task = taskService.getTaskById(taskId, relevantTier);
+        int offset_y = 0;
+
+        // Show the task title
+        if (titleLabel == null) {
+            titleLabel = new UILabel(window.createChild(-1, WidgetType.TEXT));
+        }
+        titleLabel.setFont(FontID.BOLD_12);
+        titleLabel.setText(task.getName());
+        titleLabel.setPosition(0, offset_y);
+        titleLabel.getWidget().setHidden(false);
+        titleLabel.getWidget().setTextColor(Color.WHITE.getRGB());
+        titleLabel.getWidget().setTextShadowed(true);
+        titleLabel.getWidget().setName(task.getName());
+        titleLabel.setSize(windowWidth, 20);
+        this.add(titleLabel);
+        offset_y += 26;
+
+        // Show the task tier
+        if (tierLabel == null) {
+            tierLabel = new UILabel(window.createChild(-1, WidgetType.TEXT));
+            this.add(tierLabel);
+        }
+        tierLabel.setFont(FontID.PLAIN_12);
+        tierLabel.setText(relevantTier.name());
+        int tierWidth = tierLabel.getWidget().getFont().getTextWidth(tierLabel.getWidget().getText());
+        tierLabel.setPosition(windowWidth - tierWidth - 10, 0);
+        tierLabel.getWidget().setHidden(false);
+        tierLabel.getWidget().setTextColor(Color.WHITE.getRGB());
+        tierLabel.getWidget().setTextShadowed(true);
+        tierLabel.getWidget().setName(task.getName());
+        tierLabel.setSize(tierWidth, 20);
+
+        // Show the task tip
+        if (tipLabel == null) {
+            tipLabel = new UILabel(window.createChild(-1, WidgetType.TEXT));
+            this.add(tipLabel);
+        }
+        tipLabel.setFont(FontID.PLAIN_12);
+        tipLabel.setText(task.getTip());
+        tipLabel.setPosition(10, offset_y);
+        tipLabel.getWidget().setHidden(false);
+        tipLabel.getWidget().setTextColor(Color.WHITE.getRGB());
+        tipLabel.getWidget().setTextShadowed(true);
+        tipLabel.getWidget().setName(task.getName());
+        Dimension descBounds = getTextDimension(tipLabel.getWidget(), tipLabel.getWidget().getText(), windowWidth - 40);
+        tipLabel.setSize(windowWidth - 20, descBounds.height);
+        offset_y += descBounds.height + 4;
+
+        int itemIndex = 0;
+        if (task.getVerification() instanceof CollectionLogVerification) {
+            CollectionLogVerification verification = (CollectionLogVerification) task.getVerification();
+            int[] itemIds = verification.getItemIds();
+
+            int obtainedCount = 0;
+            int requiredCount = verification.getCount();
+            for (int id : itemIds) {
+                if (collectionLogService.isItemObtained(id)) {
+                    obtainedCount++;
+                }
+            }
+
+            // Show the progress of the task
+            if (progressLabel == null) {
+                progressLabel = new UILabel(window.createChild(-1, WidgetType.TEXT));
+                this.add(progressLabel);
+            }
+            progressLabel.setFont(FontID.PLAIN_12);
+            progressLabel.setText("Obtained " + obtainedCount + "/" + requiredCount + " required items");
+            progressLabel.setPosition(10, offset_y);
+            progressLabel.getWidget().setHidden(false);
+            progressLabel.getWidget().setTextColor(Color.WHITE.getRGB());
+            progressLabel.getWidget().setTextShadowed(true);
+            progressLabel.getWidget().setName(task.getName());
+            progressLabel.setSize(windowWidth - 20, descBounds.height);
+            offset_y += 18;
+
+            if (itemIds != null && itemIds.length > 0) {
+                int itemSize = 32;
+                int spacing = 8;
+                int itemsPerRow = Math.max(1, (windowWidth - 20) / (itemSize + spacing));
+                int numRows = (int) Math.ceil((double) itemIds.length / itemsPerRow);
+                int startY = offset_y + 8;
+                int y = startY;
+                for (int row = 0; row < numRows; row++) {
+                    int itemsInThisRow = Math.min(itemsPerRow, itemIds.length - itemIndex);
+                    int totalRowWidth = itemsInThisRow * itemSize + (itemsInThisRow - 1) * spacing;
+                    int startX = (windowWidth - totalRowWidth) / 2;
+                    int x = startX;
+                    // Check if this row would be too close to the bottom edge
+                    if (y + itemSize > windowHeight - BUTTON_HEIGHT - 20) {
+                        break;
+                    }
+                    for (int col = 0; col < itemsInThisRow; col++) {
+                        UIGraphic itemImage = itemIndex < taskIcons.size() ? taskIcons.get(itemIndex) : null;
+                        if (itemImage == null) {
+                            itemImage = new UIGraphic(window.createChild(-1, WidgetType.GRAPHIC));
+                            taskIcons.add(itemImage);
+                            this.add(itemImage);
+                        }
+                        int itemId = itemIds[itemIndex];
+                        itemImage.getWidget().setHidden(false);
+                        itemImage.setPosition(x, y);
+                        itemImage.getWidget().setBorderType(1);
+                        itemImage.getWidget().setItemQuantityMode(ItemQuantityMode.NEVER);
+                        itemImage.setSize(itemSize, itemSize);
+                        itemImage.setItem(itemId);
+                        boolean isObtained = collectionLogService.isItemObtained(itemId);
+                        itemImage.setOpacity(isObtained ? 1 : 0.3f);
+                        String itemName = plugin.itemManager.getItemComposition(itemId).getName();
+                        itemImage.getWidget().clearActions();
+                        itemImage.clearActions();
+                        itemImage.addAction(itemName, () -> {});
+                        x += itemSize + spacing;
+                        itemImage.revalidate();
+                        itemIndex++;
+                    }
+                    y += itemSize + spacing;
+                }
+                offset_y = y + 8;
+            }
+        } else {
+            progressLabel.setPosition(-100, -100);
+        }
+        for (int i = itemIndex; i < taskIcons.size(); i++) {
+            UIGraphic itemImage = taskIcons.get(i);
+            if (itemImage != null) {
+                itemImage.setPosition(-100, -100);
+                itemImage.revalidate();
+            }
+        }
+
+        if (wikiBtn == null) {
+            wikiBtn = new UIButton(window.createChild(-1, WidgetType.GRAPHIC));
+            wikiBtn.addAction("View wiki", this::closeTask);
+            this.add(wikiBtn);
+        }
+        wikiBtn.setSize(BUTTON_WIDTH, BUTTON_HEIGHT);
+        wikiBtn.setPosition(10, windowHeight - 10 - BUTTON_HEIGHT);
+        wikiBtn.setSprites(WIKI_BUTTON_SPRITE_ID, WIKI_BUTTON_HOVER_SPRITE_ID);
+
+        if (closeBtn == null) {
+            closeBtn = new UIButton(window.createChild(-1, WidgetType.GRAPHIC));
+            closeBtn.addAction("Close Task Info", this::closeTask);
+            this.add(closeBtn);
+        }
+        closeBtn.setSize(BUTTON_WIDTH, BUTTON_HEIGHT);
+        closeBtn.setPosition(windowWidth - 10 - BUTTON_WIDTH, windowHeight - 10 - BUTTON_HEIGHT);
+        closeBtn.setSprites(BACK_BUTTON_SPRITE_ID, BACK_BUTTON_HOVER_SPRITE_ID);
+
+        if (completeBtn == null) {
+            completeBtn = new UIButton(window.createChild(-1, WidgetType.GRAPHIC));
+            this.add(completeBtn);
+        }
+        completeBtn.setSize(LARGE_BUTTON_WIDTH, BUTTON_HEIGHT);
+        completeBtn.setPosition((windowWidth / 2) - (LARGE_BUTTON_WIDTH / 2), windowHeight - 10 - BUTTON_HEIGHT);
+        completeBtn.setSprites(COMPLETE_TASK_SPRITE_ID, COMPLETE_TASK_HOVER_SPRITE_ID);
+        // TODO: Implement task completion logic
+        completeBtn.getWidget().clearActions();
+        completeBtn.clearActions();
+        completeBtn.addAction("Complete Task", () -> {});
 
         // Hide task list/dashboard/tabs, show task info
         this.setVisibility(true);
 
-        // TODO: Show the task information for the given task index
-        // Show the task title/description
-        // Show the task tier?
-        // Show the task icon?
-        // Show the task tip
-        // Show the task progress and status
-        // Show the task items (if applicable), and status of each item
-        // Add a button to close the task info
-        // Add a button to mark the task as complete/incomplete
+        titleLabel.revalidate();
+        tipLabel.revalidate();
+        tierLabel.revalidate();
+        wikiBtn.revalidate();
+        closeBtn.revalidate();
+        completeBtn.revalidate();
+        progressLabel.revalidate();
+
+        System.out.println("Task Info Updated");
+    }
+
+    
+    private Dimension getTextDimension(Widget widget, String text, int maxWidth) {
+        if (text == null || text.isEmpty()) {
+            return new Dimension(0, 0);
+        }
+        String[] words = text.split(" ");
+        StringBuilder line = new StringBuilder();
+        int lineCount = 1;
+        int maxLineWidth = 0;
+        for (int i = 0; i < words.length; i++) {
+            String testLine = line.length() == 0 ? words[i] : line + " " + words[i];
+            int testWidth = widget.getFont().getTextWidth(testLine);
+            if (line.toString().contains("<br>") || testWidth > maxWidth && line.length() > 0) {
+                // Start new line
+                maxLineWidth = Math.max(maxLineWidth, widget.getFont().getTextWidth(line.toString()));
+                line = new StringBuilder(words[i]);
+                lineCount++;
+            } else {
+                if (line.length() > 0) {
+                    line.append(" ");
+                }
+                line.append(words[i]);
+            }
+        }
+        // Check last line
+        if (line.length() > 0) {
+            maxLineWidth = Math.max(maxLineWidth, widget.getFont().getTextWidth(line.toString()));
+        }
+        int lineHeight = widget.getFont().getBaseline();
+        return new Dimension(maxLineWidth, lineCount * lineHeight);
     }
 
     public void closeTask() {
@@ -109,10 +327,6 @@ public class TaskInfo extends UIPage {
 
     public void updateBounds()
     {
-        if (!this.isVisible()) {
-            return;
-        }
-
         Widget wrapper = window.getParent();
         wrapperX = wrapper.getRelativeX();
         wrapperY = wrapper.getRelativeY();
@@ -124,6 +338,10 @@ public class TaskInfo extends UIPage {
 
         bounds.setLocation(wrapperX + windowX + OFFSET_X, wrapperY + windowY + OFFSET_Y);
         bounds.setSize(windowWidth - OFFSET_X, wrapperHeight);
+
+        if (!this.isVisible()) {
+            return;
+        }
     }
 
     private void forceWidgetPositionUpdate(Widget button, int x, int y) {
