@@ -12,6 +12,7 @@ import com.logmaster.ui.generic.UIButton;
 import com.logmaster.ui.generic.UIGraphic;
 import com.logmaster.ui.generic.UILabel;
 import com.logmaster.ui.generic.UIPage;
+import com.logmaster.ui.component.TaskInfo;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.widgets.ItemQuantityMode;
 import net.runelite.api.widgets.Widget;
@@ -53,6 +54,7 @@ public class TaskList extends UIPage {
     private final ClientThread clientThread;
     private final CollectionLogService collectionLogService;
     private final TaskService taskService;
+    private TaskInfo taskInfo;
 
     private Rectangle bounds = new Rectangle();
 
@@ -253,7 +255,7 @@ public class TaskList extends UIPage {
                 taskImage.setItem(task.getDisplayItemId());
 
                 // Add our right click actions
-                taskBg.addAction("Mark as " + (taskCompleted ? "<col=c0392b>incomplete" : "<col=27ae60>completed") + "</col>", () -> plugin.completeTask(task.getId()));
+                taskBg.addAction("Show task info", () -> taskInfo.showTask(task.getId()));
 
                 if (task.getVerification() instanceof CollectionLogVerification) {
                     CollectionLogVerification verif = (CollectionLogVerification) task.getVerification();
@@ -535,5 +537,9 @@ public class TaskList extends UIPage {
 
     public void handleMouseRelease() {
         isDraggingThumb = false;
+    }
+
+    public void setTaskInfoComponent(TaskInfo taskInfo) {
+        this.taskInfo = taskInfo;
     }
 }

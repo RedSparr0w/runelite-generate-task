@@ -44,6 +44,14 @@ public class TaskService extends EventBusSubscriber {
         return saveDataStorage.get().getActiveTask();
     }
 
+    public Task getTaskById(String taskId, TaskTier tier) {
+        List<Task> tasks = getTierTasks(tier);
+        return tasks.stream()
+                .filter(task -> task.getId().equals(taskId))
+                .findFirst()
+                .orElse(null);
+    }
+
     public @NonNull TaskTier getCurrentTier() {
         Map<TaskTier, Float> progress = getProgress();
 

@@ -9,6 +9,7 @@ import com.logmaster.synchronization.clog.CollectionLogService;
 import com.logmaster.task.TaskService;
 import com.logmaster.ui.component.TabManager;
 import com.logmaster.ui.component.TaskDashboard;
+import com.logmaster.ui.component.TaskInfo;
 import com.logmaster.ui.component.TaskList;
 import com.logmaster.ui.generic.UICheckBox;
 import com.logmaster.ui.generic.dropdown.UIDropdown;
@@ -76,6 +77,7 @@ public class InterfaceManager extends EventBusSubscriber implements MouseListene
     public TaskDashboard taskDashboard;
     private TaskList taskList;
     private TabManager tabManager;
+    private TaskInfo taskInfo;
 
     private UICheckBox taskDashboardCheckbox;
     private UIDropdown dropdown;
@@ -132,6 +134,7 @@ public class InterfaceManager extends EventBusSubscriber implements MouseListene
         createTaskDashboard(window);
         createTaskList(window);
         createTabManager(window);
+        createTaskInfo(window);
         createTaskCheckbox();
 
         this.tabManager.updateTabs();
@@ -278,6 +281,13 @@ public class InterfaceManager extends EventBusSubscriber implements MouseListene
     private void createTaskList(Widget window) {
         this.taskList = new TaskList(window, plugin, clientThread, config, collectionLogService, taskService);
         this.taskList.setVisibility(false);
+    }
+
+    private void createTaskInfo(Widget window) {
+        this.taskInfo = new TaskInfo(window, plugin, clientThread, config, collectionLogService, taskService);
+        this.taskInfo.setComponents(taskDashboard, taskList, tabManager);
+        this.taskList.setTaskInfoComponent(taskInfo);
+        this.taskInfo.setVisibility(false);
     }
 
     private void createTaskCheckbox() {
