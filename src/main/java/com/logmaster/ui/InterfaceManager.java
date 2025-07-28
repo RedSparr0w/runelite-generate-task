@@ -152,20 +152,6 @@ public class InterfaceManager extends EventBusSubscriber implements MouseListene
         this.taskList.setVisibility(false);
         tabManager.hideTabs();
 	}
-
-	@Subscribe
-	public void onScriptPostFired(ScriptPostFired scriptPostFired) {
-		if (scriptPostFired.getScriptId() != COLLECTION_LOG_SETUP_SCRIPT_ID) {
-			return;
-		}
-
-        if (this.dropdown != null) {
-            this.dropdown.cleanup();
-            this.dropdown = null;
-        }
-
-        createTaskDropdownOption();
-	}
     
     Rectangle oldBounds;
 
