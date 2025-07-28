@@ -376,10 +376,6 @@ public class TaskList extends UIPage {
 
     public void updateBounds()
     {
-        if (!this.isVisible()) {
-            return;
-        }
-
         Widget wrapper = window.getParent();
         wrapperX = wrapper.getRelativeX();
         wrapperY = wrapper.getRelativeY();
@@ -389,6 +385,8 @@ public class TaskList extends UIPage {
         windowWidth = window.getWidth();
         windowHeight = window.getHeight();
 
+        bounds.setLocation(wrapperX + windowX + OFFSET_X, wrapperY + windowY + OFFSET_Y);
+        bounds.setSize(windowWidth - OFFSET_X, wrapperHeight);
         // Recalculate how many tasks can be displayed
         int newTasksPerPage = Math.max(1, wrapperHeight / TASK_HEIGHT);
         columns = Math.max(1, (windowWidth - SCROLLBAR_WIDTH - 40) / (TASK_WIDTH + COLUMN_SPACING));
@@ -402,12 +400,13 @@ public class TaskList extends UIPage {
             int maxTopIndex = Math.max(0, taskService.getTierTasks(relevantTier).size() - tasksPerPage);
             topTaskIndex = Math.min(topTaskIndex, maxTopIndex);
         }
+
+        if (!this.isVisible()) {
+            return;
+        }
         updateArrowPositions();
         updateScrollbar();
         refreshTasks(0);
-
-        bounds.setLocation(wrapperX + windowX + OFFSET_X, wrapperY + windowY + OFFSET_Y);
-        bounds.setSize(windowWidth - OFFSET_X, wrapperHeight);
     }
 
     private void updateArrowPositions() {

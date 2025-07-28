@@ -164,6 +164,14 @@
       "fileName":"wiki-button-hover.png"
    },
    {
+      "spriteId":-20041,
+      "fileName":"incompTask.png"
+   },
+   {
+      "spriteId":-20042,
+      "fileName":"incompTask-hover.png"
+   },
+   {
       "spriteId":-20099,
       "fileName":"transparent.png"
    }

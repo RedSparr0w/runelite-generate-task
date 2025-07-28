@@ -93,7 +93,7 @@ public class SaveDataUpdater {
         if (v0TaskPointer != null) {
             V0Task v0Task = v0TaskPointer.getTask();
             String newTaskId = v0MigrationData.get(v0TaskPointer.getTaskTier()).get(v0Task.getId());
-            Task newTask = new Task(newTaskId, v0Task.getDescription(), v0Task.getDescription(), v0Task.getItemID(), null);
+            Task newTask = new Task(newTaskId, v0Task.getDescription(), v0Task.getItemID(), v0Task.getDescription(), "https://oldschool.runescape.wiki/", null);
             newSave.setActiveTaskPointer(new V1TaskPointer(v0TaskPointer.getTaskTier(), newTask));
         }
 

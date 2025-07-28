@@ -21,6 +21,7 @@ import net.runelite.api.widgets.ItemQuantityMode;
 import net.runelite.api.widgets.Widget;
 import net.runelite.api.widgets.WidgetType;
 import net.runelite.client.callback.ClientThread;
+import net.runelite.client.util.LinkBrowser;
 
 import java.awt.*;
 import java.awt.event.MouseWheelEvent;
@@ -51,6 +52,8 @@ public class TaskInfo extends UIPage {
     private final static int WIKI_BUTTON_HOVER_SPRITE_ID = -20040;
     private final static int COMPLETE_TASK_SPRITE_ID = -20000;
     private final static int COMPLETE_TASK_HOVER_SPRITE_ID = -20002;
+    private final static int INCOMPLETE_TASK_SPRITE_ID = -20041;
+    private final static int INCOMPLETE_TASK_HOVER_SPRITE_ID = -20042;
 
     private TaskDashboard taskDashboard;
     private TaskList taskList;
@@ -92,9 +95,10 @@ public class TaskInfo extends UIPage {
             this.previousVisiblePage = this.taskDashboard.isVisible() ? this.taskDashboard : this.taskList;
             this.previousVisiblePage.setVisibility(false);
             this.tabManager.hideTabs();
-        } else {
+        } else if (this.previousVisiblePage != null) {
             this.previousVisiblePage.setVisibility(true);
             this.tabManager.showTabs();
+            previousVisiblePage = null;
         }
     }
 
@@ -105,6 +109,8 @@ public class TaskInfo extends UIPage {
     private UIButton closeBtn;
     private UIButton completeBtn;
     private UILabel progressLabel;
+    private UIGraphic progressBarBg;
+    private UIGraphic progressBarFill;
     private List<UIGraphic> taskIcons = new ArrayList<>();
 
     public void showTask(String taskId) {
@@ -128,7 +134,7 @@ public class TaskInfo extends UIPage {
         titleLabel.getWidget().setName(task.getName());
         titleLabel.setSize(windowWidth, 20);
         this.add(titleLabel);
-        offset_y += 26;
+        offset_y += 30;
 
         // Show the task tier
         if (tierLabel == null) {
@@ -159,7 +165,7 @@ public class TaskInfo extends UIPage {
         tipLabel.getWidget().setName(task.getName());
         Dimension descBounds = getTextDimension(tipLabel.getWidget(), tipLabel.getWidget().getText(), windowWidth - 40);
         tipLabel.setSize(windowWidth - 20, descBounds.height);
-        offset_y += descBounds.height + 4;
+        offset_y += descBounds.height + 8;
 
         int itemIndex = 0;
         if (task.getVerification() instanceof CollectionLogVerification) {
@@ -173,20 +179,50 @@ public class TaskInfo extends UIPage {
                     obtainedCount++;
                 }
             }
+            // Draw progress bar background and fill
+            int progressBarX = 10;
+            int progressBarY = offset_y;
+            int progressBarWidth = windowWidth - 20;
+            int progressBarHeight = 18;
 
-            // Show the progress of the task
+            // Create or reuse a UIGraphic for the progress bar background
+            if (progressBarBg == null) {
+                progressBarBg = new UIGraphic(window.createChild(-1, WidgetType.RECTANGLE));
+                this.add(progressBarBg);
+            }
+            progressBarBg.setPosition(progressBarX, progressBarY);
+            progressBarBg.setSize(progressBarWidth, progressBarHeight);
+            progressBarBg.getWidget().setFilled(true);
+            progressBarBg.getWidget().setOpacity(100);
+            progressBarBg.getWidget().setTextColor(new Color(40, 40, 40).getRGB()); // dark background
+            progressBarBg.getWidget().setBorderType(1);
+
+            // Create or reuse a UIGraphic for the progress bar fill
+            if (progressBarFill == null) {
+                progressBarFill = new UIGraphic(window.createChild(-1, WidgetType.RECTANGLE));
+                this.add(progressBarFill);
+            }
+            int fillWidth = Math.min((int) ((obtainedCount / (float) requiredCount) * progressBarWidth), progressBarWidth);
+            progressBarFill.setPosition(progressBarX, progressBarY);
+            progressBarFill.setSize(fillWidth, progressBarHeight);
+            progressBarFill.getWidget().setFilled(true);
+            progressBarFill.getWidget().setOpacity(100);
+            progressBarFill.getWidget().setTextColor(new Color(60, 180, 75).getRGB()); // green fill
+            progressBarFill.getWidget().setBorderType(0);
+
+            // Progress label on top of the bar
             if (progressLabel == null) {
                 progressLabel = new UILabel(window.createChild(-1, WidgetType.TEXT));
                 this.add(progressLabel);
             }
             progressLabel.setFont(FontID.PLAIN_12);
             progressLabel.setText("Obtained " + obtainedCount + "/" + requiredCount + " required items");
-            progressLabel.setPosition(10, offset_y);
-            progressLabel.getWidget().setHidden(false);
+            progressLabel.setPosition(progressBarX, progressBarY);
             progressLabel.getWidget().setTextColor(Color.WHITE.getRGB());
             progressLabel.getWidget().setTextShadowed(true);
             progressLabel.getWidget().setName(task.getName());
-            progressLabel.setSize(windowWidth - 20, descBounds.height);
+            progressLabel.setSize(progressBarWidth, progressBarHeight);
+
             offset_y += 18;
 
             if (itemIds != null && itemIds.length > 0) {
@@ -234,6 +270,8 @@ public class TaskInfo extends UIPage {
                 offset_y = y + 8;
             }
         } else {
+            progressBarBg.setPosition(-100, -100);
+            progressBarFill.setPosition(-100, -100);
             progressLabel.setPosition(-100, -100);
         }
         for (int i = itemIndex; i < taskIcons.size(); i++) {
@@ -246,12 +284,16 @@ public class TaskInfo extends UIPage {
 
         if (wikiBtn == null) {
             wikiBtn = new UIButton(window.createChild(-1, WidgetType.GRAPHIC));
-            wikiBtn.addAction("View wiki", this::closeTask);
             this.add(wikiBtn);
         }
         wikiBtn.setSize(BUTTON_WIDTH, BUTTON_HEIGHT);
         wikiBtn.setPosition(10, windowHeight - 10 - BUTTON_HEIGHT);
         wikiBtn.setSprites(WIKI_BUTTON_SPRITE_ID, WIKI_BUTTON_HOVER_SPRITE_ID);
+        wikiBtn.getWidget().clearActions();
+        wikiBtn.clearActions();
+        wikiBtn.addAction("View wiki", () -> {
+            LinkBrowser.browse(task.getWikiLink());
+        });
 
         if (closeBtn == null) {
             closeBtn = new UIButton(window.createChild(-1, WidgetType.GRAPHIC));
@@ -268,11 +310,15 @@ public class TaskInfo extends UIPage {
         }
         completeBtn.setSize(LARGE_BUTTON_WIDTH, BUTTON_HEIGHT);
         completeBtn.setPosition((windowWidth / 2) - (LARGE_BUTTON_WIDTH / 2), windowHeight - 10 - BUTTON_HEIGHT);
-        completeBtn.setSprites(COMPLETE_TASK_SPRITE_ID, COMPLETE_TASK_HOVER_SPRITE_ID);
-        // TODO: Implement task completion logic
         completeBtn.getWidget().clearActions();
         completeBtn.clearActions();
-        completeBtn.addAction("Complete Task", () -> {});
+        if (taskService.isComplete(taskId)) {
+            completeBtn.setSprites(INCOMPLETE_TASK_SPRITE_ID, INCOMPLETE_TASK_HOVER_SPRITE_ID);
+            completeBtn.addAction("Mark as <col=c0392b>incomplete</col>", () -> toggleTask(taskId));
+        } else {
+            completeBtn.setSprites(COMPLETE_TASK_SPRITE_ID, COMPLETE_TASK_HOVER_SPRITE_ID);
+            completeBtn.addAction("Mark as <col=27ae60>complete</col>", () -> toggleTask(taskId));
+        }
 
         // Hide task list/dashboard/tabs, show task info
         this.setVisibility(true);
@@ -283,12 +329,26 @@ public class TaskInfo extends UIPage {
         wikiBtn.revalidate();
         closeBtn.revalidate();
         completeBtn.revalidate();
+        progressBarBg.revalidate();
+        progressBarFill.revalidate();
         progressLabel.revalidate();
-
-        System.out.println("Task Info Updated");
     }
 
-    
+    private void toggleTask(String taskId) {
+        completeBtn.getWidget().clearActions();
+        completeBtn.clearActions();
+        if (taskService.isComplete(taskId)) {
+            taskService.uncomplete(taskId);
+            completeBtn.setSprites(COMPLETE_TASK_SPRITE_ID, COMPLETE_TASK_HOVER_SPRITE_ID);
+            completeBtn.addAction("Mark as <col=27ae60>complete</col>", () -> toggleTask(taskId));
+        } else {
+            taskService.complete(taskId);
+            completeBtn.setSprites(INCOMPLETE_TASK_SPRITE_ID, INCOMPLETE_TASK_HOVER_SPRITE_ID);
+            completeBtn.addAction("Mark as <col=c0392b>incomplete</col>", () -> toggleTask(taskId));
+        }
+        completeBtn.revalidate();
+    }
+
     private Dimension getTextDimension(Widget widget, String text, int maxWidth) {
         if (text == null || text.isEmpty()) {
             return new Dimension(0, 0);
