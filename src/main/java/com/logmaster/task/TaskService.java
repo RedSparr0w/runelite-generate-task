@@ -44,12 +44,16 @@ public class TaskService extends EventBusSubscriber {
         return saveDataStorage.get().getActiveTask();
     }
 
-    public Task getTaskById(String taskId, TaskTier tier) {
-        List<Task> tasks = getTierTasks(tier);
-        return tasks.stream()
-                .filter(task -> task.getId().equals(taskId))
-                .findFirst()
-                .orElse(null);
+    public Task getTaskById(String taskId) {
+        for (TaskTier t : TaskTier.values()) {
+            List<Task> tasks = getTierTasks(t);
+            for (Task task : tasks) {
+                if (task.getId().equals(taskId)) {
+                    return task;
+                }
+            }
+        }
+        return null;
     }
 
     public @NonNull TaskTier getCurrentTier() {

@@ -97,7 +97,11 @@ public class TaskInfo extends UIPage {
             this.tabManager.hideTabs();
         } else if (this.previousVisiblePage != null) {
             this.previousVisiblePage.setVisibility(true);
+            if (this.taskList.isVisible()) {
+                this.taskList.updateBounds();
+            }
             this.tabManager.showTabs();
+            this.tabManager.updateTabs();
             previousVisiblePage = null;
         }
     }
@@ -114,11 +118,7 @@ public class TaskInfo extends UIPage {
     private List<UIGraphic> taskIcons = new ArrayList<>();
 
     public void showTask(String taskId) {
-        TaskTier relevantTier = plugin.getSelectedTier();
-        if (relevantTier == null) {
-            relevantTier = TaskTier.MASTER;
-        }
-        Task task = taskService.getTaskById(taskId, relevantTier);
+        Task task = taskService.getTaskById(taskId);
         int offset_y = 0;
 
         // Show the task title
@@ -137,19 +137,19 @@ public class TaskInfo extends UIPage {
         offset_y += 30;
 
         // Show the task tier
-        if (tierLabel == null) {
-            tierLabel = new UILabel(window.createChild(-1, WidgetType.TEXT));
-            this.add(tierLabel);
-        }
-        tierLabel.setFont(FontID.PLAIN_12);
-        tierLabel.setText(relevantTier.name());
-        int tierWidth = tierLabel.getWidget().getFont().getTextWidth(tierLabel.getWidget().getText());
-        tierLabel.setPosition(windowWidth - tierWidth - 10, 0);
-        tierLabel.getWidget().setHidden(false);
-        tierLabel.getWidget().setTextColor(Color.WHITE.getRGB());
-        tierLabel.getWidget().setTextShadowed(true);
-        tierLabel.getWidget().setName(task.getName());
-        tierLabel.setSize(tierWidth, 20);
+        // if (tierLabel == null) {
+        //     tierLabel = new UILabel(window.createChild(-1, WidgetType.TEXT));
+        //     this.add(tierLabel);
+        // }
+        // tierLabel.setFont(FontID.PLAIN_12);
+        // tierLabel.setText();
+        // int tierWidth = tierLabel.getWidget().getFont().getTextWidth(tierLabel.getWidget().getText());
+        // tierLabel.setPosition(windowWidth - tierWidth - 10, 0);
+        // tierLabel.getWidget().setHidden(false);
+        // tierLabel.getWidget().setTextColor(Color.WHITE.getRGB());
+        // tierLabel.getWidget().setTextShadowed(true);
+        // tierLabel.getWidget().setName(task.getName());
+        // tierLabel.setSize(tierWidth, 20);
 
         // Show the task tip
         if (tipLabel == null) {
@@ -325,7 +325,7 @@ public class TaskInfo extends UIPage {
 
         titleLabel.revalidate();
         tipLabel.revalidate();
-        tierLabel.revalidate();
+        // tierLabel.revalidate();
         wikiBtn.revalidate();
         closeBtn.revalidate();
         completeBtn.revalidate();

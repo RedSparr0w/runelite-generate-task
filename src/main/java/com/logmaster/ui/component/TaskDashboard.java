@@ -54,6 +54,8 @@ public class TaskDashboard extends UIPage {
     private final TaskService taskService;
     private final Client client;
 
+    private TaskInfo taskInfo;
+
     private UILabel title;
     private UILabel taskLabel;
     private UILabel percentCompletion;
@@ -126,6 +128,19 @@ public class TaskDashboard extends UIPage {
         this.add(syncBtn);
     }
 
+    @Override
+    public void setVisibility(boolean visible) {
+        super.setVisibility(visible);
+        if (visible) {
+            if (taskService.getActiveTask() == null) {
+                clearTask();
+            } else {
+                Task activeTask = taskService.getActiveTask();
+                setTask(activeTask, null);
+            }
+        }
+    }
+
     private void createTaskDetails() {
         final int POS_X = getCenterX(window, DEFAULT_TASK_DETAILS_WIDTH);
         final int POS_Y = getCenterY(window, DEFAULT_TASK_DETAILS_HEIGHT)-3;
@@ -153,7 +168,19 @@ public class TaskDashboard extends UIPage {
         this.taskImage.getWidget().setBorderType(1);
     }
 
-    public void setTask(String desc, int taskItemID, List<Task> cyclingTasks) {
+    public void clearTask() {
+        this.taskBg.getWidget().clearActions();
+        this.taskBg.clearActions();
+        this.taskLabel.setText("No active task.");
+        this.taskImage.setItem(7542);
+        this.disableCompleteTask();
+        this.enableGenerateTask();
+        this.enableFaqButton();
+    }
+
+    public void setTask(Task task, List<Task> cyclingTasks) {
+        this.disableGenerateTask();
+
         if (cyclingTasks != null) {
             for (int i = 0; i < 250; i++) {
                 Task displayTask = cyclingTasks.get((int) Math.floor(Math.random() * cyclingTasks.size()));
@@ -169,20 +196,19 @@ public class TaskDashboard extends UIPage {
                 fakeTaskTimer.start();
             }
             Timer realTaskTimer = new Timer(config.rollTime(), ae -> {
-                this.taskLabel.setText(desc);
-                this.taskImage.setItem(taskItemID);
-                this.enableCompleteTask();
-                this.enableFaqButton();
+                setTask(task, null);
             });
             realTaskTimer.setRepeats(false);
             realTaskTimer.setCoalesce(true);
             realTaskTimer.start();
-        } else {
-            this.taskLabel.setText(desc);
-            this.taskImage.setItem(taskItemID);
-            this.enableCompleteTask();
-            this.enableFaqButton();
+            return;
         }
+
+        this.taskLabel.setText(task.getName());
+        this.taskImage.setItem(task.getDisplayItemId());
+        this.taskBg.addAction("View task info", () -> taskInfo.showTask(task.getId()));
+        this.enableCompleteTask();
+        this.enableFaqButton();
     }
 
 	private void generateTask() {
@@ -190,8 +216,8 @@ public class TaskDashboard extends UIPage {
 		Task generatedTask = taskService.generate();
 
 		List<Task> rollTaskList = config.rollPastCompleted() ? taskService.getTierTasks() : taskService.getIncompleteTierTasks();
-		setTask(generatedTask.getName(), generatedTask.getDisplayItemId(), rollTaskList);
-        disableGenerateTask(false);
+		setTask(generatedTask, rollTaskList);
+        disableGenerateTask();
         updatePercentages();
 	}
 
@@ -229,20 +255,12 @@ public class TaskDashboard extends UIPage {
         }
     }
 
-    public void disableGenerateTask() {
-        disableGenerateTask(true);
-    }
 
-    public void disableGenerateTask(boolean enableComplete) {
+    public void disableGenerateTask() {
         this.generateTaskBtn.setSprites(GENERATE_TASK_DISABLED_SPRITE_ID);
         this.generateTaskBtn.clearActions();
 
         this.generateTaskBtn.addAction("Disabled", this::playFailSound);
-
-        if (enableComplete) {
-            this.enableCompleteTask();
-            this.enableFaqButton();
-        }
     }
 
     public void enableGenerateTask() {
@@ -279,10 +297,6 @@ public class TaskDashboard extends UIPage {
     }
 
     public void updateBounds() {
-        if (!this.isVisible()) {
-            return;
-        }
-
         int windowWidth = window.getWidth();
 
         // Update title position - force widget position update
@@ -364,4 +378,8 @@ public class TaskDashboard extends UIPage {
 	private void playFailSound() {
 		client.playSoundEffect(2277);
 	}
+
+    public void setTaskInfoComponent(TaskInfo taskInfo) {
+        this.taskInfo = taskInfo;
+    }
 }
