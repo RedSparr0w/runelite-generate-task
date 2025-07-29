@@ -54,7 +54,7 @@ public class TaskList extends UIPage {
     private final ClientThread clientThread;
     private final CollectionLogService collectionLogService;
     private final TaskService taskService;
-    private TaskInfo taskInfo;
+    private final TaskInfo taskInfo;
 
     private Rectangle bounds = new Rectangle();
 
@@ -87,13 +87,14 @@ public class TaskList extends UIPage {
 
     private final LogMasterConfig config;
 
-    public TaskList(Widget window, LogMasterPlugin plugin, ClientThread clientThread, LogMasterConfig config, CollectionLogService collectionLogService, TaskService taskService) {
+    public TaskList(Widget window, LogMasterPlugin plugin, ClientThread clientThread, LogMasterConfig config, CollectionLogService collectionLogService, TaskService taskService, TaskInfo taskInfo) {
         this.window = window;
         this.plugin = plugin;
         this.clientThread = clientThread;
         this.config = config;
         this.collectionLogService = collectionLogService;
         this.taskService = taskService;
+        this.taskInfo = taskInfo;
 
         updateBounds();
 
@@ -536,9 +537,5 @@ public class TaskList extends UIPage {
 
     public void handleMouseRelease() {
         isDraggingThumb = false;
-    }
-
-    public void setTaskInfoComponent(TaskInfo taskInfo) {
-        this.taskInfo = taskInfo;
     }
 }
