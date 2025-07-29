@@ -2,16 +2,17 @@ package com.logmaster.domain;
 
 import lombok.Data;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
 @Data
 public class TieredTaskList {
-    private List<Task> easy;
-    private List<Task> medium;
-    private List<Task> hard;
-    private List<Task> elite;
-    private List<Task> master;
+    private List<Task> easy = new ArrayList<>();
+    private List<Task> medium = new ArrayList<>();
+    private List<Task> hard = new ArrayList<>();
+    private List<Task> elite = new ArrayList<>();
+    private List<Task> master = new ArrayList<>();
 
     public List<Task> getForTier(TaskTier tier) {
         switch (tier) {

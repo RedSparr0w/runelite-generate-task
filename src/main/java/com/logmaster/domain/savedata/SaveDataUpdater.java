@@ -9,6 +9,7 @@ import com.logmaster.domain.savedata.v0.V0TaskPointer;
 import com.logmaster.domain.savedata.v1.V1SaveData;
 import com.logmaster.domain.savedata.v1.V1TaskPointer;
 import com.logmaster.task.SaveDataStorage;
+import com.logmaster.task.TaskService;
 import com.logmaster.util.FileUtils;
 import lombok.extern.slf4j.Slf4j;
 
@@ -27,6 +28,9 @@ import static com.logmaster.util.GsonOverride.GSON;
 public class SaveDataUpdater {
     @Inject
     private SaveDataStorage saveDataStorage;
+
+    @Inject
+    private TaskService taskService;
 
     public SaveData update(String json) {
         BaseSaveData base = GSON.fromJson(json, BaseSaveData.class);
@@ -93,7 +97,20 @@ public class SaveDataUpdater {
         if (v0TaskPointer != null) {
             V0Task v0Task = v0TaskPointer.getTask();
             String newTaskId = v0MigrationData.get(v0TaskPointer.getTaskTier()).get(v0Task.getId());
-            Task newTask = new Task(newTaskId, v0Task.getDescription(), v0Task.getItemID(), v0Task.getDescription(), "https://oldschool.runescape.wiki/", null);
+            Task newTask = taskService.getTaskById(newTaskId);
+
+            // either the tasklist hasn't been initialized yet or we couldn't find the task
+            if (newTask == null) {
+                newTask = new Task(
+                        newTaskId,
+                        v0Task.getDescription(),
+                        v0Task.getItemID(),
+                        "Unable to fetch tip for migrated task; this will work after you generate a new task",
+                        "https://oldschool.runescape.wiki/",
+                        null
+                );
+            }
+
             newSave.setActiveTaskPointer(new V1TaskPointer(v0TaskPointer.getTaskTier(), newTask));
         }
 
