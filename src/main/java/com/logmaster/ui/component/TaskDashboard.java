@@ -53,8 +53,8 @@ public class TaskDashboard extends UIPage {
     private final SyncService syncService;
     private final TaskService taskService;
     private final Client client;
+    private final TaskInfo taskInfo;
 
-    private TaskInfo taskInfo;
 
     private UILabel title;
     private UILabel taskLabel;
@@ -68,13 +68,14 @@ public class TaskDashboard extends UIPage {
     private UIButton faqBtn;
     private UIButton syncBtn;
 
-    public TaskDashboard(LogMasterPlugin plugin, LogMasterConfig config, Widget window, SyncService syncService, TaskService taskService, Client client) {
+    public TaskDashboard(LogMasterPlugin plugin, LogMasterConfig config, Widget window, SyncService syncService, TaskService taskService, Client client, TaskInfo taskInfo) {
         this.window = window;
         this.plugin = plugin;
         this.config = config;
         this.syncService = syncService;
         this.taskService = taskService;
         this.client = client;
+        this.taskInfo = taskInfo;
 
         createTaskDetails();
 
@@ -378,8 +379,4 @@ public class TaskDashboard extends UIPage {
 	private void playFailSound() {
 		client.playSoundEffect(2277);
 	}
-
-    public void setTaskInfoComponent(TaskInfo taskInfo) {
-        this.taskInfo = taskInfo;
-    }
 }

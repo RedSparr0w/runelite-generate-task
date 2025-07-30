@@ -132,10 +132,10 @@ public class InterfaceManager extends EventBusSubscriber implements MouseListene
 
         Widget window = client.getWidget(InterfaceID.Collection.CONTENT);
 
+        createTaskInfo(window);
         createTaskDashboard(window);
         createTaskList(window);
         createTabManager(window);
-        createTaskInfo(window);
         createTaskCheckbox();
 
         this.tabManager.updateTabs();
@@ -264,20 +264,18 @@ public class InterfaceManager extends EventBusSubscriber implements MouseListene
     }
 
     private void createTaskDashboard(Widget window) {
-        this.taskDashboard = new TaskDashboard(plugin, config, window, syncService, taskService, client);
+        this.taskDashboard = new TaskDashboard(plugin, config, window, syncService, taskService, client, taskInfo);
         this.taskDashboard.setVisibility(false);
     }
 
     private void createTaskList(Widget window) {
-        this.taskList = new TaskList(window, plugin, clientThread, config, collectionLogService, taskService);
+        this.taskList = new TaskList(window, plugin, clientThread, config, collectionLogService, taskService, taskInfo);
         this.taskList.setVisibility(false);
     }
 
     private void createTaskInfo(Widget window) {
         this.taskInfo = new TaskInfo(window, plugin, clientThread, config, collectionLogService, taskService);
         this.taskInfo.setComponents(taskDashboard, taskList, tabManager);
-        this.taskList.setTaskInfoComponent(taskInfo);
-        this.taskDashboard.setTaskInfoComponent(taskInfo);
     }
 
     private void createTaskCheckbox() {

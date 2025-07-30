@@ -23,7 +23,7 @@ public class TaskListStorage {
     @Inject
     private OkHttpClient client;
 
-    private TieredTaskList taskList;
+    private @NonNull TieredTaskList taskList = new TieredTaskList();
 
     @Inject
     public TaskListStorage(OkHttpClient client) {
@@ -32,7 +32,7 @@ public class TaskListStorage {
         loadAsync();
     }
 
-    public TieredTaskList get() {
+    public @NonNull TieredTaskList get() {
         return taskList;
     }
 
@@ -42,11 +42,11 @@ public class TaskListStorage {
                 .thenAccept(taskList -> this.taskList = taskList);
     }
 
-    private static TieredTaskList fetchLocal() {
+    private @NonNull TieredTaskList fetchLocal() {
         return FileUtils.loadDefinitionResource(TieredTaskList.class, LOCAL_TASK_LIST_FILE);
     }
 
-    private CompletableFuture<TieredTaskList> fetchRemoteAsync() {
+    private CompletableFuture<@NonNull TieredTaskList> fetchRemoteAsync() {
         return requestRemote().thenApply(response -> {
             try (Response res = response) {
                 ResponseBody body = res.body();
@@ -56,8 +56,8 @@ public class TaskListStorage {
 
                 return GSON.fromJson(body.string(), TieredTaskList.class);
             } catch (Exception e) {
-                log.error("Error!", e);
-                return null;
+                log.error("Error fetching remote task list asynchronously!", e);
+                throw new RuntimeException(e);
             }
         });
     }
