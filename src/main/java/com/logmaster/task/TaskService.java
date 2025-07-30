@@ -48,6 +48,16 @@ public class TaskService extends EventBusSubscriber {
         return saveDataStorage.get().getActiveTask();
     }
 
+    public int getRerolls() {
+        return saveDataStorage.get().getRerolls();
+    }
+
+    public int setRerolls(int rerolls) {
+        SaveData data = saveDataStorage.get();
+        data.setRerolls(rerolls);
+        return rerolls;
+    }
+
     public Task getTaskById(String taskId) {
         for (TaskTier t : TaskTier.values()) {
             List<Task> tasks = getTierTasks(t);
@@ -124,8 +134,13 @@ public class TaskService extends EventBusSubscriber {
 
         Task activeTask = data.getActiveTask();
         if (activeTask != null) {
-            log.warn("Tried to generate task when previous one wasn't completed yet");
-            return null;
+            // We only count as a reroll if there is an active task
+            if (this.getRerolls() > 0) {
+                this.setRerolls(getRerolls() - 1);
+            } else {
+                log.warn("Tried to generate task when previous one wasn't completed yet, no rerolls left");
+                return null;
+            }
         }
 
         TaskTier currentTier = getCurrentTier();
@@ -162,6 +177,8 @@ public class TaskService extends EventBusSubscriber {
         Task activeTask = getActiveTask();
         if (activeTask != null && taskId.equals(activeTask.getId())) {
             data.setActiveTask(null);
+            // Reset our rerolls when we complete our active task
+            this.setRerolls(config.rerollsAllowed());
         }
 
         saveDataStorage.save();

@@ -180,6 +180,9 @@ public class TaskDashboard extends UIPage {
 
     public void setTask(Task task, List<Task> cyclingTasks) {
         this.disableGenerateTask();
+        this.disableCompleteTask();
+        this.taskBg.getWidget().clearActions();
+        this.taskBg.clearActions();
 
         if (cyclingTasks != null) {
             for (int i = 0; i < 250; i++) {
@@ -207,6 +210,10 @@ public class TaskDashboard extends UIPage {
         this.taskLabel.setText(task.getName());
         this.taskImage.setItem(task.getDisplayItemId());
         this.taskBg.addAction("View task info", () -> taskInfo.showTask(task.getId()));
+        
+        if (taskService.getRerolls() > 0) {
+            this.enableGenerateTask();
+        }
         this.enableCompleteTask();
         this.enableFaqButton();
     }
@@ -216,9 +223,10 @@ public class TaskDashboard extends UIPage {
 		Task generatedTask = taskService.generate();
 
 		List<Task> rollTaskList = config.rollPastCompleted() ? taskService.getTierTasks() : taskService.getIncompleteTierTasks();
-		setTask(generatedTask, rollTaskList);
         disableGenerateTask();
+        disableCompleteTask();
         updatePercentages();
+		setTask(generatedTask, rollTaskList);
 	}
 
     public void updatePercentages() {
@@ -260,13 +268,20 @@ public class TaskDashboard extends UIPage {
         this.generateTaskBtn.setSprites(GENERATE_TASK_DISABLED_SPRITE_ID);
         this.generateTaskBtn.clearActions();
 
+        this.generateTaskBtn.setName("");
         this.generateTaskBtn.addAction("Disabled", this::playFailSound);
     }
 
     public void enableGenerateTask() {
         this.generateTaskBtn.clearActions();
         this.generateTaskBtn.setSprites(GENERATE_TASK_SPRITE_ID, GENERATE_TASK_HOVER_SPRITE_ID);
-        this.generateTaskBtn.addAction("Generate task", this::generateTask);
+        if (taskService.getRerolls() > 0 && taskService.getActiveTask() != null) {
+            this.generateTaskBtn.setName(taskService.getRerolls() + " remaining");
+            this.generateTaskBtn.addAction("Reroll task", this::generateTask);
+        } else {
+            this.generateTaskBtn.setName("");
+            this.generateTaskBtn.addAction("Generate task", this::generateTask);
+        }
 
         this.disableCompleteTask();
     }

@@ -105,4 +105,23 @@ public interface LogMasterConfig extends Config
     {
         return true;
     }
+
+    @ConfigSection(
+            name = "Unofficial taskman config",
+            description = "Configuration options for unofficial taskman",
+            position = 20
+    )
+    String unofficial = "unofficial";
+
+    @ConfigItem(
+            keyName = "rerolls",
+            name = "Enable rerolls",
+            description = "0 to disable. Set this to the amount of rerolls you want to allow. Changes apply after completing your current task.",
+            section = unofficial,
+            position = 1
+    )
+    default int rerollsAllowed()
+    {
+        return 0;
+    }
 }
