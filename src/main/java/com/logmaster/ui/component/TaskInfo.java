@@ -131,7 +131,6 @@ public class TaskInfo extends UIPage {
         titleLabel.getWidget().setTextColor(Color.WHITE.getRGB());
         titleLabel.getWidget().setTextShadowed(true);
         titleLabel.getWidget().setName(currentTask.getName());
-        titleLabel.setSize(windowWidth, 20);
         this.add(titleLabel);
 
         // Show the task tip
@@ -145,31 +144,17 @@ public class TaskInfo extends UIPage {
         tipLabel.getWidget().setTextColor(Color.WHITE.getRGB());
         tipLabel.getWidget().setTextShadowed(true);
         tipLabel.getWidget().setName(currentTask.getName());
-        Dimension descBounds = getTextDimension(tipLabel.getWidget(), tipLabel.getWidget().getText(), windowWidth - 40);
-        tipLabel.setSize(windowWidth - 20, descBounds.height);
 
         int itemIndex = 0;
         if (currentTask.getVerification() instanceof CollectionLogVerification) {
             CollectionLogVerification verification = (CollectionLogVerification) currentTask.getVerification();
             int[] itemIds = verification.getItemIds();
 
-            int obtainedCount = 0;
-            int requiredCount = verification.getCount();
-            for (int id : itemIds) {
-                if (collectionLogService.isItemObtained(id)) {
-                    obtainedCount++;
-                }
-            }
-
-            int progressBarWidth = windowWidth - 20;
-            int progressBarHeight = 18;
-
             // Create or reuse a UIGraphic for the progress bar background
             if (progressBarBg == null) {
                 progressBarBg = new UIGraphic(window.createChild(-1, WidgetType.RECTANGLE));
                 this.add(progressBarBg);
             }
-            progressBarBg.setSize(progressBarWidth, progressBarHeight);
             progressBarBg.getWidget().setFilled(true);
             progressBarBg.getWidget().setOpacity(100);
             progressBarBg.getWidget().setTextColor(new Color(40, 40, 40).getRGB()); // dark background
@@ -180,8 +165,6 @@ public class TaskInfo extends UIPage {
                 progressBarFill = new UIGraphic(window.createChild(-1, WidgetType.RECTANGLE));
                 this.add(progressBarFill);
             }
-            int fillWidth = Math.min((int) ((obtainedCount / (float) requiredCount) * progressBarWidth), progressBarWidth);
-            progressBarFill.setSize(fillWidth, progressBarHeight);
             progressBarFill.getWidget().setFilled(true);
             progressBarFill.getWidget().setOpacity(100);
             progressBarFill.getWidget().setTextColor(new Color(60, 180, 75).getRGB()); // green fill
@@ -193,11 +176,9 @@ public class TaskInfo extends UIPage {
                 this.add(progressLabel);
             }
             progressLabel.setFont(FontID.PLAIN_12);
-            progressLabel.setText("Obtained " + obtainedCount + "/" + requiredCount + " required items");
             progressLabel.getWidget().setTextColor(Color.WHITE.getRGB());
             progressLabel.getWidget().setTextShadowed(true);
             progressLabel.getWidget().setName(currentTask.getName());
-            progressLabel.setSize(progressBarWidth, progressBarHeight);
 
             if (itemIds != null && itemIds.length > 0) {
                 int itemSize = 32;
@@ -233,7 +214,6 @@ public class TaskInfo extends UIPage {
         extraItemsLabel.getWidget().setTextColor(Color.WHITE.getRGB());
         extraItemsLabel.getWidget().setTextShadowed(true);
         extraItemsLabel.getWidget().setName(currentTask.getName());
-        extraItemsLabel.setSize(windowWidth, 12);
 
         if (wikiBtn == null) {
             wikiBtn = new UIButton(window.createChild(-1, WidgetType.GRAPHIC));
@@ -293,9 +273,11 @@ public class TaskInfo extends UIPage {
     private void setPositions() {
         int offset_y = 0;
         titleLabel.setPosition(0, offset_y);
+        titleLabel.setSize(windowWidth, 20);
         offset_y += 30;
         tipLabel.setPosition(10, offset_y);
         Dimension descBounds = getTextDimension(tipLabel.getWidget(), tipLabel.getWidget().getText(), windowWidth - 40);
+        tipLabel.setSize(windowWidth - 20, descBounds.height);
         offset_y += descBounds.height + 8;
         int progressBarX = 10;
         int progressBarY = offset_y;
@@ -304,9 +286,25 @@ public class TaskInfo extends UIPage {
         if (currentTask.getVerification() instanceof CollectionLogVerification) {
             CollectionLogVerification verification = (CollectionLogVerification) currentTask.getVerification();
             int[] itemIds = verification.getItemIds();
+
+            int obtainedCount = 0;
+            int requiredCount = verification.getCount();
+            for (int id : itemIds) {
+                if (collectionLogService.isItemObtained(id)) {
+                    obtainedCount++;
+                }
+            }
+            int progressBarWidth = windowWidth - 20;
+            int progressBarHeight = 18;
+            int fillWidth = Math.min((int) ((obtainedCount / (float) requiredCount) * progressBarWidth), progressBarWidth);
+            
             progressBarBg.setPosition(progressBarX, progressBarY);
+            progressBarBg.setSize(progressBarWidth, progressBarHeight);
             progressBarFill.setPosition(progressBarX, progressBarY);
+            progressBarFill.setSize(fillWidth, progressBarHeight);
             progressLabel.setPosition(progressBarX, progressBarY);
+            progressLabel.setSize(progressBarWidth, progressBarHeight);
+            progressLabel.setText("Obtained " + obtainedCount + "/" + requiredCount + " required items");
             offset_y += 18;
 
             if (itemIds != null && itemIds.length > 0) {
@@ -338,6 +336,7 @@ public class TaskInfo extends UIPage {
                 if (itemIndex < itemIds.length) {
                     extraItemsLabel.setText((itemIds.length - itemIndex) + " more items...");
                     extraItemsLabel.setPosition(10, offset_y);
+                    extraItemsLabel.setSize(windowWidth, 12);
                     extraItemsLabel.revalidate();
                 } else {
                     extraItemsLabel.setText("");
