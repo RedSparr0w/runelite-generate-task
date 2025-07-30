@@ -98,7 +98,7 @@ public class LogMasterPlugin extends Plugin {
 
 		taskService.toggleComplete(taskId);
 		if (taskService.getActiveTask() == null) {
-			interfaceManager.clearCurrentTask();
+			interfaceManager.taskDashboard.clearTask();
 		}
 
 		interfaceManager.completeTask();

@@ -14,6 +14,8 @@ public class Task {
     private String id;
     private String name;
     private int displayItemId;
+    private String tip;
+    private String wikiLink;
     
     private @Nullable Verification verification;
 }

@@ -148,6 +148,30 @@
       "fileName":"sync-button-disabled.png"
    },
    {
+      "spriteId":-20037,
+      "fileName":"back-button.png"
+   },
+   {
+      "spriteId":-20038,
+      "fileName":"back-button-hover.png"
+   },
+   {
+      "spriteId":-20039,
+      "fileName":"wiki-button.png"
+   },
+   {
+      "spriteId":-20040,
+      "fileName":"wiki-button-hover.png"
+   },
+   {
+      "spriteId":-20041,
+      "fileName":"incompTask.png"
+   },
+   {
+      "spriteId":-20042,
+      "fileName":"incompTask-hover.png"
+   },
+   {
       "spriteId":-20099,
       "fileName":"transparent.png"
    }

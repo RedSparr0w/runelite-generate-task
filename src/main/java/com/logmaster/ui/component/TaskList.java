@@ -12,6 +12,7 @@ import com.logmaster.ui.generic.UIButton;
 import com.logmaster.ui.generic.UIGraphic;
 import com.logmaster.ui.generic.UILabel;
 import com.logmaster.ui.generic.UIPage;
+import com.logmaster.ui.component.TaskInfo;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.widgets.ItemQuantityMode;
 import net.runelite.api.widgets.Widget;
@@ -53,6 +54,7 @@ public class TaskList extends UIPage {
     private final ClientThread clientThread;
     private final CollectionLogService collectionLogService;
     private final TaskService taskService;
+    private final TaskInfo taskInfo;
 
     private Rectangle bounds = new Rectangle();
 
@@ -85,13 +87,14 @@ public class TaskList extends UIPage {
 
     private final LogMasterConfig config;
 
-    public TaskList(Widget window, LogMasterPlugin plugin, ClientThread clientThread, LogMasterConfig config, CollectionLogService collectionLogService, TaskService taskService) {
+    public TaskList(Widget window, LogMasterPlugin plugin, ClientThread clientThread, LogMasterConfig config, CollectionLogService collectionLogService, TaskService taskService, TaskInfo taskInfo) {
         this.window = window;
         this.plugin = plugin;
         this.clientThread = clientThread;
         this.config = config;
         this.collectionLogService = collectionLogService;
         this.taskService = taskService;
+        this.taskInfo = taskInfo;
 
         updateBounds();
 
@@ -253,7 +256,7 @@ public class TaskList extends UIPage {
                 taskImage.setItem(task.getDisplayItemId());
 
                 // Add our right click actions
-                taskBg.addAction("Mark as " + (taskCompleted ? "<col=c0392b>incomplete" : "<col=27ae60>completed") + "</col>", () -> plugin.completeTask(task.getId()));
+                taskBg.addAction("Show task info", () -> taskInfo.showTask(task.getId()));
 
                 if (task.getVerification() instanceof CollectionLogVerification) {
                     CollectionLogVerification verif = (CollectionLogVerification) task.getVerification();
@@ -374,19 +377,17 @@ public class TaskList extends UIPage {
 
     public void updateBounds()
     {
-        if (!this.isVisible()) {
-            return;
-        }
-
-        Widget collectionLogWrapper = window.getParent();
-        wrapperX = collectionLogWrapper.getRelativeX();
-        wrapperY = collectionLogWrapper.getRelativeY();
+        Widget wrapper = window.getParent();
+        wrapperX = wrapper.getRelativeX();
+        wrapperY = wrapper.getRelativeY();
         wrapperHeight = window.getHeight() - OFFSET_Y;
         windowX = window.getRelativeX();
         windowY = window.getRelativeY();
         windowWidth = window.getWidth();
         windowHeight = window.getHeight();
 
+        bounds.setLocation(wrapperX + windowX + OFFSET_X, wrapperY + windowY + OFFSET_Y);
+        bounds.setSize(windowWidth - OFFSET_X, wrapperHeight);
         // Recalculate how many tasks can be displayed
         int newTasksPerPage = Math.max(1, wrapperHeight / TASK_HEIGHT);
         columns = Math.max(1, (windowWidth - SCROLLBAR_WIDTH - 40) / (TASK_WIDTH + COLUMN_SPACING));
@@ -400,12 +401,13 @@ public class TaskList extends UIPage {
             int maxTopIndex = Math.max(0, taskService.getTierTasks(relevantTier).size() - tasksPerPage);
             topTaskIndex = Math.min(topTaskIndex, maxTopIndex);
         }
+
+        if (!this.isVisible()) {
+            return;
+        }
         updateArrowPositions();
         updateScrollbar();
         refreshTasks(0);
-
-        bounds.setLocation(wrapperX + windowX + OFFSET_X, wrapperY + windowY + OFFSET_Y);
-        bounds.setSize(windowWidth - OFFSET_X, wrapperHeight);
     }
 
     private void updateArrowPositions() {
