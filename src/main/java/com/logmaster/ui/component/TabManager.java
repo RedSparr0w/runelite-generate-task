@@ -25,6 +25,10 @@ public class TabManager {
     private TaskList taskList;
     private UIGraphic divider;
 
+    private int TAB_HEIGHT = 21;
+    private int TAB_WIDTH = 66;
+    private int DASHBOARD_TAB_WIDTH = 95;
+
     public TabManager(Widget window, LogMasterConfig config, LogMasterPlugin plugin) {
         this.window = window;
         this.config = config;
@@ -56,7 +60,7 @@ public class TabManager {
         Widget dashboardTabWidget = window.createChild(-1, WidgetType.GRAPHIC);
         taskDashboardTab = new UIButton(dashboardTabWidget);
         taskDashboardTab.setSprites(DASHBOARD_TAB_SPRITE_ID, DASHBOARD_TAB_HOVER_SPRITE_ID);
-        taskDashboardTab.setSize(95, 21);
+        taskDashboardTab.setSize(DASHBOARD_TAB_WIDTH, TAB_HEIGHT);
         taskDashboardTab.setPosition(10, 0);
         taskDashboardTab.addAction("View <col=ff9040>Dashboard</col>", this::activateTaskDashboard);
         taskDashboardTab.setVisibility(false);
@@ -64,7 +68,7 @@ public class TabManager {
         for (TaskTier tier : TaskTier.values()) {
             Widget tabWidget = window.createChild(-1, WidgetType.GRAPHIC);
             UIButton tab = new UIButton(tabWidget);
-            tab.setSize(66, 21);
+            tab.setSize(TAB_WIDTH, TAB_HEIGHT);
             tab.setVisibility(false);
             tabs.add(tab);
         }
@@ -74,22 +78,16 @@ public class TabManager {
         Widget dividerWidget = window.createChild(-1, WidgetType.GRAPHIC);
         divider = new UIGraphic(dividerWidget);
         divider.setSprite(DIVIDER_SPRITE_ID);
-        divider.setSize(window.getWidth() - 20, 1); // Full width minus margins
-        divider.setPosition(10, 20);
+        divider.setSize(window.getWidth(), 1); // Full width minus margins
+        divider.setPosition(0, 20);
+        divider.revalidate();
     }
 
     public void updateBounds() {
         // Update divider width to match window width
         int windowWidth = window.getWidth();
-        divider.setSize(windowWidth - 20, 1);
-        divider.getWidget().setSize(windowWidth - 20, 1);
-        divider.getWidget().revalidate();
-        
-        // Force widget position updates for all tabs
-        taskDashboardTab.getWidget().revalidate();
-        for (UIButton tab : tabs) {
-            tab.getWidget().revalidate();
-        }
+        divider.setSize(windowWidth, 1);
+        divider.revalidate();
 
         // Update tab positions
         updateTabPositions();
@@ -97,9 +95,6 @@ public class TabManager {
 
     private void updateTabPositions() {
         int windowWidth = window.getWidth();
-        int availableWidth = windowWidth - 20; // 10px margin on each side
-        int dashboardTabWidth = 95;
-        int regularTabWidth = 66;
         int minSpacing = -30; // Allow up to 30px overlap
         // Count only visible tabs
         int visibleTierTabs = 0;
@@ -108,61 +103,53 @@ public class TabManager {
                 visibleTierTabs++;
             }
         }
-        int totalTabsWidth = dashboardTabWidth + (visibleTierTabs * regularTabWidth);
-        int spacing = (availableWidth - totalTabsWidth) / (visibleTierTabs + 2);
+        int totalTabsWidth = DASHBOARD_TAB_WIDTH + (visibleTierTabs * TAB_WIDTH);
+        int spacing = (windowWidth - totalTabsWidth) / (visibleTierTabs + 2);
         // Allow negative spacing for overlap, but not less than minSpacing
         spacing = Math.max(minSpacing, Math.min(10, spacing));
-        int dashboardX = 10 + spacing;
-        taskDashboardTab.setSize(dashboardTabWidth, 21);
+        int dashboardX = spacing;
         taskDashboardTab.setPosition(dashboardX, 0);
-        taskDashboardTab.getWidget().setSize(dashboardTabWidth, 21);
         taskDashboardTab.getWidget().setPos(dashboardX, 0);
-        int currentX = dashboardX + dashboardTabWidth + spacing;
+        int currentX = dashboardX + DASHBOARD_TAB_WIDTH + spacing;
         int tabIndex = 0;
         for (TaskTier tier : TaskTier.values()) {
+            UIButton tab = tabs.get(tabIndex);
             if (tier.ordinal() >= config.hideBelow().ordinal()) {
-                UIButton tab = tabs.get(tabIndex);
-                tab.setSize(regularTabWidth, 21);
+                if (plugin.getSelectedTier() == tier && !this.taskDashboard.isVisible()) {
+                    tab.setSprites(tier.tabSpriteHoverId);
+                } else {
+                    tab.setSprites(tier.tabSpriteId, tier.tabSpriteHoverId);
+                }
                 tab.setPosition(currentX, 0);
-                tab.getWidget().setSize(regularTabWidth, 21);
                 tab.getWidget().setPos(currentX, 0);
-                currentX += regularTabWidth + spacing;
+                tab.setVisibility(true);
+                tab.getWidget().setHidden(false);
+                int finalTabIndex = tabIndex;
+                tab.clearActions();
+                tab.addAction(String.format("View <col=ff9040>%s Task List</col>", tier.displayName), () -> activateTaskListForTier(tier, finalTabIndex));
+                currentX += TAB_WIDTH + spacing;
+            } else {
+                // Move out of view if not visible
+                tab.setPosition(-1000, -1000);
+                tab.getWidget().setPos(-1000, -1000);
+                tab.setVisibility(false);
+                tab.getWidget().setHidden(true);
             }
-            tabIndex++;
-        }
-        // Revalidate all tabs
-        for (UIButton tab : tabs) {
             tab.revalidate();
             tab.getWidget().revalidate();
+            tabIndex++;
+        }
+        if (!this.taskDashboard.isVisible() && !this.taskList.isVisible()) {
+            hideTabs();
         }
     }
 
     public void updateTabs() {
         hideTabs();
         if (tabs == null) return;
+        if (!taskDashboard.isVisible() && !taskList.isVisible()) return;
 
-        int tabIndex = 0;
-        for (TaskTier tier : TaskTier.values()) {
-            if (tier.ordinal() >= config.hideBelow().ordinal()) {
-                UIButton tab = tabs.get(tabIndex);
-
-                if (plugin.getSelectedTier() == tier && !this.taskDashboard.isVisible()) {
-                    tab.setSprites(tier.tabSpriteHoverId);
-                } else {
-                    tab.setSprites(tier.tabSpriteId, tier.tabSpriteHoverId);
-                }
-
-                tab.setSize(66, 21);
-
-                int finalTabIndex = tabIndex;
-                String actionLabel = String.format("View <col=ff9040>%s Task List</col>", tier.displayName);
-                tab.clearActions();
-                tab.addAction(actionLabel, () -> activateTaskListForTier(tier, finalTabIndex));
-            }
-
-            tabIndex++;
-        }
-
+        updateTabPositions();
         showTabs();
     }
 
@@ -218,10 +205,5 @@ public class TabManager {
             tabIndex++;
         }
         updateTabPositions();
-    }
-
-    public void onConfigChanged() {
-        createTabs();
-        updateTabs();
     }
 }

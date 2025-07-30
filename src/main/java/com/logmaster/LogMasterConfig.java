@@ -12,6 +12,7 @@ public interface LogMasterConfig extends Config
     String CONFIG_GROUP = "log-master";
 
     String PLUGIN_VERSION_KEY = "plugin-version";
+    String IS_COMMAND_ENABLED_KEY = "isCommandEnabled";
 
     @Range(
             min = 1000,
@@ -52,17 +53,6 @@ public interface LogMasterConfig extends Config
     }
 
     @ConfigItem(
-            keyName = "loadRemoteTaskList",
-            name = "Load remote task list",
-            description = "Load the latest version of the tasklist, this will be updated more frequently than the default list bundled with the plugin",
-            position = 4
-    )
-    default boolean loadRemoteTaskList()
-    {
-        return true;
-    }
-
-    @ConfigItem(
             keyName = "displayCurrentTaskOverlay",
             name = "Display current task overlay",
             description = "Enable an overlay showing the currently assigned task (when one exists)",
@@ -82,5 +72,37 @@ public interface LogMasterConfig extends Config
     default DynamicTaskImages dynamicTaskImages()
     {
         return DynamicTaskImages.NONE;
+    }
+
+    @ConfigSection(
+            name = "!taskman Command",
+            description = "Configuration options for the !taskman command",
+            position = 7
+    )
+    String command = "command";
+
+    @ConfigItem(
+            keyName = IS_COMMAND_ENABLED_KEY,
+            name = "Enable command",
+            description = "When you or others type !taskman in the chat, it will be replaced by your current task status",
+            warning = "Enabling this feature submits your IP address to a server not controlled or verified by the RuneLite developers.",
+            section = command,
+            position = 0
+    )
+    default boolean isCommandEnabled()
+    {
+        return false;
+    }
+
+    @ConfigItem(
+            keyName = "isCommandReminderEnabled",
+            name = "Enable reminder",
+            description = "Reminds you to enable commands in case you forgot",
+            section = command,
+            position = 1
+    )
+    default boolean isCommandReminderEnabled()
+    {
+        return true;
     }
 }

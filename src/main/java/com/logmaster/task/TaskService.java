@@ -6,6 +6,7 @@ import com.logmaster.domain.TaskTier;
 import com.logmaster.domain.TieredTaskList;
 import com.logmaster.domain.savedata.SaveData;
 import com.logmaster.domain.verification.clog.CollectionLogVerification;
+import com.logmaster.ui.TaskmanCommandManager;
 import com.logmaster.util.EventBusSubscriber;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
@@ -28,6 +29,9 @@ public class TaskService extends EventBusSubscriber {
     @Inject
     private TaskListStorage taskListStorage;
 
+    @Inject
+    private TaskmanCommandManager taskmanCommandManager;
+
     @Override
     public void startUp() {
         super.startUp();
@@ -42,6 +46,18 @@ public class TaskService extends EventBusSubscriber {
 
     public Task getActiveTask() {
         return saveDataStorage.get().getActiveTask();
+    }
+
+    public Task getTaskById(String taskId) {
+        for (TaskTier t : TaskTier.values()) {
+            List<Task> tasks = getTierTasks(t);
+            for (Task task : tasks) {
+                if (task.getId().equals(taskId)) {
+                    return task;
+                }
+            }
+        }
+        return null;
     }
 
     public @NonNull TaskTier getCurrentTier() {
@@ -124,6 +140,7 @@ public class TaskService extends EventBusSubscriber {
 
         data.setActiveTask(generatedTask);
         saveDataStorage.save();
+        taskmanCommandManager.updateServer();
 
         return generatedTask;
     }
@@ -148,6 +165,7 @@ public class TaskService extends EventBusSubscriber {
         }
 
         saveDataStorage.save();
+        taskmanCommandManager.updateServer();
     }
 
     public void uncomplete(String taskId) {
@@ -155,6 +173,7 @@ public class TaskService extends EventBusSubscriber {
         completedTasks.remove(taskId);
 
         saveDataStorage.save();
+        taskmanCommandManager.updateServer();
     }
 
     public void toggleComplete(String taskId) {

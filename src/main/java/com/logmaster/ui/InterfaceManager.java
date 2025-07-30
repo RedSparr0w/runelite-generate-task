@@ -7,18 +7,18 @@ import com.logmaster.domain.TaskTier;
 import com.logmaster.synchronization.SyncService;
 import com.logmaster.synchronization.clog.CollectionLogService;
 import com.logmaster.task.TaskService;
+import com.logmaster.ui.component.BurgerMenuManager;
 import com.logmaster.ui.component.TabManager;
 import com.logmaster.ui.component.TaskDashboard;
+import com.logmaster.ui.component.TaskInfo;
 import com.logmaster.ui.component.TaskList;
 import com.logmaster.ui.generic.UICheckBox;
-import com.logmaster.ui.generic.dropdown.UIDropdown;
-import com.logmaster.ui.generic.dropdown.UIDropdownOption;
 import com.logmaster.util.EventBusSubscriber;
 import com.logmaster.util.FileUtils;
+import net.runelite.api.ChatMessageType;
 import net.runelite.api.Client;
 import net.runelite.api.SoundEffectID;
 import net.runelite.api.events.GameTick;
-import net.runelite.api.events.ScriptPostFired;
 import net.runelite.api.events.WidgetClosed;
 import net.runelite.api.events.WidgetLoaded;
 import net.runelite.api.gameval.InterfaceID;
@@ -34,6 +34,8 @@ import net.runelite.client.input.MouseWheelListener;
 
 import javax.inject.Inject;
 import javax.inject.Singleton;
+
+import java.awt.Rectangle;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseWheelEvent;
 import java.util.List;
@@ -43,9 +45,6 @@ import static com.logmaster.ui.InterfaceConstants.DEF_FILE_SPRITES;
 
 @Singleton
 public class InterfaceManager extends EventBusSubscriber implements MouseListener, MouseWheelListener {
-    private static final int COLLECTION_LOG_TAB_DROPDOWN_WIDGET_ID = 40697929;
-    private static final int COLLECTION_LOG_SETUP_SCRIPT_ID = 7797;
-
     @Inject
     private Client client;
 
@@ -73,18 +72,25 @@ public class InterfaceManager extends EventBusSubscriber implements MouseListene
     @Inject
     private TaskService taskService;
 
+    @Inject
+    private BurgerMenuManager burgerMenuManager;
+
     public TaskDashboard taskDashboard;
     private TaskList taskList;
     private TabManager tabManager;
+    private TaskInfo taskInfo;
 
     private UICheckBox taskDashboardCheckbox;
-    private UIDropdown dropdown;
+
+    private boolean checkboxDeprecationWarned = false;
 
     public void startUp() {
         super.startUp();
-
         mouseManager.registerMouseListener(this);
         mouseManager.registerMouseWheelListener(this);
+        burgerMenuManager.startUp();
+
+        burgerMenuManager.setOnSelectChangedListener(this::toggleTaskDashboard);
 
         SpriteDefinition[] spriteDefinitions = FileUtils.loadDefinitionResource(SpriteDefinition[].class, DEF_FILE_SPRITES);
         this.spriteManager.addSpriteOverrides(spriteDefinitions);
@@ -92,9 +98,9 @@ public class InterfaceManager extends EventBusSubscriber implements MouseListene
 
     public void shutDown() {
         super.shutDown();
-
         mouseManager.unregisterMouseListener(this);
         mouseManager.unregisterMouseWheelListener(this);
+        burgerMenuManager.shutDown();
     }
 
 	@Subscribe
@@ -103,23 +109,20 @@ public class InterfaceManager extends EventBusSubscriber implements MouseListene
 			return;
 		}
 
-        if (this.taskDashboard == null || !isTaskDashboardEnabled()) {
+        if (!isTaskDashboardEnabled() || this.taskDashboard == null || this.tabManager == null) {
             return;
         }
 
-        if (tabManager != null) {
-            tabManager.updateTabs();
-
-            List<TaskTier> visibleTiers = taskService.getVisibleTiers();
-            TaskTier activeTier = plugin.getSelectedTier();
-            if (activeTier != null && visibleTiers.contains(activeTier)) {
-                tabManager.activateTaskDashboard();
-            }
-        }
-
         taskDashboard.updatePercentages();
-        tabManager.onConfigChanged();
-	}
+
+        clientThread.invoke(tabManager::updateTabs);
+
+        List<TaskTier> visibleTiers = taskService.getVisibleTiers();
+        TaskTier activeTier = plugin.getSelectedTier();
+        if (activeTier != null && !visibleTiers.contains(activeTier)) {
+            clientThread.invoke(tabManager::activateTaskDashboard);
+        }
+    }
 
 	@Subscribe
 	public void onWidgetLoaded(WidgetLoaded e) {
@@ -129,10 +132,13 @@ public class InterfaceManager extends EventBusSubscriber implements MouseListene
 
         Widget window = client.getWidget(InterfaceID.Collection.CONTENT);
 
+        createTaskInfo(window);
         createTaskDashboard(window);
         createTaskList(window);
         createTabManager(window);
         createTaskCheckbox();
+        this.tabManager.setComponents(taskDashboard, taskList);
+        this.taskInfo.setComponents(taskDashboard, taskList, tabManager);
 
         this.tabManager.updateTabs();
         this.taskDashboard.setVisibility(false);
@@ -148,23 +154,23 @@ public class InterfaceManager extends EventBusSubscriber implements MouseListene
         this.taskList.setVisibility(false);
         tabManager.hideTabs();
 	}
-
-	@Subscribe
-	public void onScriptPostFired(ScriptPostFired scriptPostFired) {
-		if (scriptPostFired.getScriptId() != COLLECTION_LOG_SETUP_SCRIPT_ID) {
-			return;
-		}
-
-        if (this.dropdown != null) {
-            this.dropdown.cleanup();
-            this.dropdown = null;
-        }
-
-        createTaskDropdownOption();
-	}
+    
+    Rectangle oldBounds;
 
 	@Subscribe
 	public void onGameTick(GameTick e) {
+        Widget window = client.getWidget(621, 88);
+        if (window == null) {
+            oldBounds = null;
+            return;
+        }
+        // Check if the window bounds have changed
+        Rectangle newBounds = window.getBounds();
+        if (oldBounds != null && oldBounds.equals(newBounds)) {
+            return;
+        }
+        oldBounds = newBounds;
+
         if (this.taskList != null) {
             taskList.updateBounds();
         }
@@ -174,11 +180,11 @@ public class InterfaceManager extends EventBusSubscriber implements MouseListene
         if (this.tabManager != null) {
             tabManager.updateBounds();
         }
+        if (this.taskInfo != null) {
+            taskInfo.updateBounds();
+        }
         if (this.taskDashboardCheckbox != null) {
-            Widget window = client.getWidget(621, 88);
-            if (window != null) {
-                taskDashboardCheckbox.alignToRightEdge(window, 35, 10);
-            }
+            taskDashboardCheckbox.alignToRightEdge(window, 35, 10);
         }
 	}
 
@@ -254,30 +260,22 @@ public class InterfaceManager extends EventBusSubscriber implements MouseListene
         return event;
     }
 
-    private void createTaskDropdownOption() {
-        Widget container = client.getWidget(COLLECTION_LOG_TAB_DROPDOWN_WIDGET_ID);
-        if (container == null) {
-            return;
-        }
-
-        this.dropdown = new UIDropdown(container);
-        this.dropdown.addOption("Tasks", "View Tasks Dashboard");
-        this.dropdown.setOptionEnabledListener(this::toggleTaskDashboard);
-    }
-
     private void createTabManager(Widget window) {
         this.tabManager = new TabManager(window, config, plugin);
-        this.tabManager.setComponents(taskDashboard, taskList);
     }
 
     private void createTaskDashboard(Widget window) {
-        this.taskDashboard = new TaskDashboard(plugin, config, window, syncService, taskService, client);
+        this.taskDashboard = new TaskDashboard(plugin, config, window, syncService, taskService, client, taskInfo);
         this.taskDashboard.setVisibility(false);
     }
 
     private void createTaskList(Widget window) {
-        this.taskList = new TaskList(window, plugin, clientThread, config, collectionLogService, taskService);
+        this.taskList = new TaskList(window, plugin, clientThread, config, collectionLogService, taskService, taskInfo);
         this.taskList.setVisibility(false);
+    }
+
+    private void createTaskInfo(Widget window) {
+        this.taskInfo = new TaskInfo(window, plugin, clientThread, config, collectionLogService, taskService);
     }
 
     private void createTaskCheckbox() {
@@ -294,27 +292,30 @@ public class InterfaceManager extends EventBusSubscriber implements MouseListene
             taskDashboardCheckbox.setEnabled(false);
             taskDashboardCheckbox.setText("Task Dashboard");
             labelWidget.setPos(375, 10);
-                    
+
 
             taskDashboardCheckbox.setToggleListener((UICheckBox src) -> {
-                if (taskDashboardCheckbox.isEnabled()) {
-                    this.dropdown.setEnabledOption("Tasks");
-                } else {
-                    this.dropdown.setEnabledOption("View Log");
+                if (!checkboxDeprecationWarned) {
+                    checkboxDeprecationWarned = true;
+                    String msg = "<col=ff392b>Please use the hamburger menu on the top-left corner to open the task dashboard;"
+                            + " this checkbox will be removed in the future";
+                    client.addChatMessage(ChatMessageType.GAMEMESSAGE, "", msg, "");
+                    client.playSoundEffect(2277);
                 }
+
+                this.burgerMenuManager.setSelected(taskDashboardCheckbox.isEnabled());
             });
         }
     }
 
-    private void toggleTaskDashboard(UIDropdownOption src) {
+    private void toggleTaskDashboard() {
         if(this.taskDashboard == null) return;
 
         Task activeTask = taskService.getActiveTask();
         if (activeTask != null) {
-            this.taskDashboard.setTask(activeTask.getName(), activeTask.getDisplayItemId(), null);
-            this.taskDashboard.disableGenerateTask();
+            this.taskDashboard.setTask(activeTask, null);
         } else {
-            clearCurrentTask();
+            this.taskDashboard.clearTask();
         }
 
         boolean enabled = isTaskDashboardEnabled();
@@ -335,6 +336,7 @@ public class InterfaceManager extends EventBusSubscriber implements MouseListene
         if (enabled) {
             this.tabManager.activateTaskDashboard();
         } else {
+            this.taskInfo.setVisibility(false);
             this.taskDashboard.setVisibility(false);
             this.taskList.setVisibility(false);
             this.tabManager.hideTabs();
@@ -345,7 +347,7 @@ public class InterfaceManager extends EventBusSubscriber implements MouseListene
     }
 
     private boolean isTaskDashboardEnabled() {
-        return this.dropdown != null && this.dropdown.getEnabledOption().getText().equals("Tasks");
+        return burgerMenuManager.isSelected();
     }
 
     public void completeTask() {
@@ -356,11 +358,5 @@ public class InterfaceManager extends EventBusSubscriber implements MouseListene
         this.taskDashboard.setVisibility(wasDashboardVisible);
         this.taskList.setVisibility(!wasDashboardVisible);
         this.tabManager.showTabs();
-    }
-
-    public void clearCurrentTask() {
-        this.taskDashboard.setTask("No task.", -1, null);
-        this.taskDashboard.enableGenerateTask();
-        this.taskDashboard.enableFaqButton();
     }
 }
