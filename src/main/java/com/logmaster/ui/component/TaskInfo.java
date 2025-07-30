@@ -109,7 +109,6 @@ public class TaskInfo extends UIPage {
 
     private UILabel titleLabel;
     private UILabel tipLabel;
-    private UILabel tierLabel;
     private UIButton wikiBtn;
     private UIButton closeBtn;
     private UIButton completeBtn;
@@ -117,6 +116,7 @@ public class TaskInfo extends UIPage {
     private UIGraphic progressBarBg;
     private UIGraphic progressBarFill;
     private List<UIGraphic> taskIcons = new ArrayList<>();
+    private UILabel extraItemsLabel;
 
     public void showTask(String taskId) {
         currentTask = taskService.getTaskById(taskId);
@@ -222,18 +222,18 @@ public class TaskInfo extends UIPage {
                     itemIndex++;
                 }
             }
-        } else {
-            progressBarBg.setPosition(-100, -100);
-            progressBarFill.setPosition(-100, -100);
-            progressLabel.setPosition(-100, -100);
         }
-        for (int i = itemIndex; i < taskIcons.size(); i++) {
-            UIGraphic itemImage = taskIcons.get(i);
-            if (itemImage != null) {
-                itemImage.setPosition(-100, -100);
-                itemImage.revalidate();
-            }
+        // Extra items label if needed
+        if (extraItemsLabel == null) {
+            extraItemsLabel = new UILabel(window.createChild(-1, WidgetType.TEXT));
+            this.add(extraItemsLabel);
         }
+        extraItemsLabel.setFont(FontID.PLAIN_11);
+        extraItemsLabel.setText("");
+        extraItemsLabel.getWidget().setTextColor(Color.WHITE.getRGB());
+        extraItemsLabel.getWidget().setTextShadowed(true);
+        extraItemsLabel.getWidget().setName(currentTask.getName());
+        extraItemsLabel.setSize(windowWidth, 12);
 
         if (wikiBtn == null) {
             wikiBtn = new UIButton(window.createChild(-1, WidgetType.GRAPHIC));
@@ -334,6 +334,15 @@ public class TaskInfo extends UIPage {
                     }
                     y += itemSize + spacing;
                 }
+                offset_y = y;
+                if (itemIndex < itemIds.length) {
+                    extraItemsLabel.setText((itemIds.length - itemIndex) + " more items...");
+                    extraItemsLabel.setPosition(10, offset_y);
+                    extraItemsLabel.revalidate();
+                } else {
+                    extraItemsLabel.setText("");
+                    extraItemsLabel.setPosition(-100, -100);
+                }
                 for (int i = itemIndex; i < taskIcons.size(); i++) {
                     UIGraphic itemImage = taskIcons.get(i);
                     if (itemImage != null) {
@@ -341,13 +350,13 @@ public class TaskInfo extends UIPage {
                         itemImage.revalidate();
                     }
                 }
-                offset_y = y + 8;
             }
         } else {
             progressBarBg.setPosition(-100, -100);
             progressBarFill.setPosition(-100, -100);
             progressLabel.setPosition(-100, -100);
         }
+        offset_y += 16;
         wikiBtn.setPosition(10, windowHeight - 10 - BUTTON_HEIGHT);
         completeBtn.setPosition((windowWidth / 2) - (LARGE_BUTTON_WIDTH / 2), windowHeight - 10 - BUTTON_HEIGHT);
         closeBtn.setPosition(windowWidth - 10 - BUTTON_WIDTH, windowHeight - 10 - BUTTON_HEIGHT);
