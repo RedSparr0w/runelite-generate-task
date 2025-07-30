@@ -1,5 +1,6 @@
 package com.logmaster.ui.generic;
 
+import net.runelite.api.widgets.ItemQuantityMode;
 import net.runelite.api.widgets.Widget;
 
 /**
@@ -33,6 +34,8 @@ public class UIGraphic extends UIComponent
 	 */
 	public void setItem(int itemID)
 	{
+		this.getWidget().setItemQuantity(100);
+		this.getWidget().setItemQuantityMode(ItemQuantityMode.NEVER);
 		this.getWidget().setItemId(itemID);
 	}
 }
