@@ -191,7 +191,6 @@ public class TaskInfo extends UIPage {
                     }
                     itemImage.getWidget().setHidden(false);
                     itemImage.getWidget().setBorderType(1);
-                    itemImage.getWidget().setItemQuantityMode(ItemQuantityMode.NEVER);
                     itemImage.setSize(itemSize, itemSize);
                     itemImage.setItem(itemId);
                     boolean isObtained = collectionLogService.isItemObtained(itemId);

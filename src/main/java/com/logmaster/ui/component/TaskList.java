@@ -251,7 +251,6 @@ public class TaskList extends UIPage {
                 taskImage.getWidget().setHidden(false);
                 taskImage.setPosition(taskX + 12, taskY + 6);
                 taskImage.getWidget().setBorderType(1);
-                taskImage.getWidget().setItemQuantityMode(ItemQuantityMode.NEVER);
                 taskImage.setSize(TASK_ITEM_WIDTH, TASK_ITEM_HEIGHT);
                 taskImage.setItem(task.getDisplayItemId());
 
