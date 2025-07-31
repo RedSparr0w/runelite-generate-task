@@ -116,7 +116,7 @@ public interface LogMasterConfig extends Config
     @ConfigItem(
             keyName = "rerolls",
             name = "Enable rerolls",
-            description = "0 to disable. Set this to the amount of rerolls you want to allow. Changes apply after completing your current task.",
+            description = "Set to 0 to disable. Set this to the amount of rerolls you want to allow. Changes apply after completing your current task.",
             section = unofficial,
             position = 1
     )
