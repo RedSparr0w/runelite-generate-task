@@ -49,7 +49,7 @@ public class TaskService extends EventBusSubscriber {
     }
 
     public int getRerolls() {
-        return saveDataStorage.get().getRerolls();
+        return config.rerollsEnabled() ? saveDataStorage.get().getRerolls() : 0;
     }
 
     public int setRerolls(int rerolls) {

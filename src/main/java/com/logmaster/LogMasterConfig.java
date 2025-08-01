@@ -149,6 +149,10 @@ public interface LogMasterConfig extends Config
             section = unofficial,
             position = 3
     )
+    @Range(
+            min = 0,
+            max = 10000
+    )
     default int rerollsIncrement()
     {
         return 0;
