@@ -296,6 +296,7 @@ public class TaskDashboard extends UIPage {
 
     public void disableGenerateTask() {
         this.generateTaskBtn.setSprites(GENERATE_TASK_DISABLED_SPRITE_ID);
+        this.generateTaskBtn.getWidget().clearActions();
         this.generateTaskBtn.clearActions();
 
         this.generateTaskBtn.addAction("Disabled", this::playFailSound);
@@ -303,6 +304,7 @@ public class TaskDashboard extends UIPage {
     }
 
     public void enableGenerateTask() {
+        this.generateTaskBtn.getWidget().clearActions();
         this.generateTaskBtn.clearActions();
         this.generateTaskBtn.setSprites(GENERATE_TASK_SPRITE_ID, GENERATE_TASK_HOVER_SPRITE_ID);
         if (taskService.getRerolls() > 0 && taskService.getActiveTask() != null) {
