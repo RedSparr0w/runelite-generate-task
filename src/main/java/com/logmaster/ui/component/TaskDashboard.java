@@ -400,11 +400,11 @@ public class TaskDashboard extends UIPage {
         
         // Update percentage completion position - force widget position update
         int percentX = getCenterX(window, COLLECTION_LOG_WINDOW_WIDTH);
-        int percentY = getCenterY(window, DEFAULT_BUTTON_HEIGHT) + 108; // Same Y as FAQ button
+        int percentY = getCenterY(window, DEFAULT_BUTTON_HEIGHT) + 106;
         this.percentCompletion.setPosition(percentX, percentY);
         this.percentCompletion.getWidget().setPos(percentX, percentY);
-        this.rerollLabel.setPosition(getCenterX(window, COLLECTION_LOG_WINDOW_WIDTH), percentY + 20);
-        this.rerollLabel.getWidget().setPos(getCenterX(window, COLLECTION_LOG_WINDOW_WIDTH), percentY + 20);
+        this.rerollLabel.setPosition(getCenterX(window, COLLECTION_LOG_WINDOW_WIDTH), percentY + 16);
+        this.rerollLabel.getWidget().setPos(getCenterX(window, COLLECTION_LOG_WINDOW_WIDTH), percentY + 16);
 
         // Force revalidation of all widgets
         this.title.getWidget().revalidate();
