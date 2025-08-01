@@ -116,6 +116,9 @@ public class InterfaceManager extends EventBusSubscriber implements MouseListene
             } else {
                 taskService.setRerolls(0);
             }
+            if (this.taskDashboard != null) {
+                this.taskDashboard.updateRerolls();
+            }
             return;
         }
 

@@ -59,6 +59,7 @@ public class TaskDashboard extends UIPage {
     private UILabel title;
     private UILabel taskLabel;
     private UILabel percentCompletion;
+    private UILabel rerollLabel;
 
     private UIGraphic taskImage;
     private UIGraphic taskBg;
@@ -90,8 +91,15 @@ public class TaskDashboard extends UIPage {
         this.percentCompletion = new UILabel(percentWidget);
         this.percentCompletion.setFont(FontID.BOLD_12);
         this.percentCompletion.setSize(COLLECTION_LOG_WINDOW_WIDTH, 25);
-        this.percentCompletion.setPosition(getCenterX(window, COLLECTION_LOG_WINDOW_WIDTH), COLLECTION_LOG_WINDOW_HEIGHT - 91);
+        this.percentCompletion.setPosition(getCenterX(window, COLLECTION_LOG_WINDOW_WIDTH), COLLECTION_LOG_WINDOW_HEIGHT - 97);
         updatePercentages();
+
+        Widget rerollWidget = window.createChild(-1, WidgetType.TEXT);
+        this.rerollLabel = new UILabel(rerollWidget);
+        this.rerollLabel.setFont(FontID.BOLD_12);
+        this.rerollLabel.setSize(COLLECTION_LOG_WINDOW_WIDTH, 25);
+        this.rerollLabel.setPosition(getCenterX(window, COLLECTION_LOG_WINDOW_WIDTH), COLLECTION_LOG_WINDOW_HEIGHT - 75);
+        updateRerolls();
 
         Widget completeTaskWidget = window.createChild(-1, WidgetType.GRAPHIC);
         this.completeTaskBtn = new UIButton(completeTaskWidget);
@@ -125,6 +133,7 @@ public class TaskDashboard extends UIPage {
         this.add(this.completeTaskBtn);
         this.add(this.generateTaskBtn);
         this.add(this.percentCompletion);
+        this.add(this.rerollLabel);
         this.add(faqBtn);
         this.add(syncBtn);
     }
@@ -227,6 +236,7 @@ public class TaskDashboard extends UIPage {
         disableCompleteTask();
         updatePercentages();
 		setTask(generatedTask, rollTaskList);
+        updateRerolls();
 	}
 
     public void updatePercentages() {
@@ -241,6 +251,26 @@ public class TaskDashboard extends UIPage {
                 currentTier.displayName
         );
         percentCompletion.setText(text);
+    }
+
+    public void updateRerolls() {
+        String color;
+        switch (taskService.getRerolls()) {
+            case 0:
+                color = "e74c3c";
+                break;
+            case 1:
+                color = "e67e22";
+                break;
+            case 2:
+                color = "f1c40f";
+                break;
+            default:
+                color = "2ecc71";
+                break;
+        }
+        String rerollsText = config.rerollsEnabled() ? "Re-rolls available: <col=" + color + ">" + taskService.getRerolls() + "</col>" : "";
+        this.rerollLabel.setText(rerollsText);
     }
 
     private String getCompletionColor(double percent) {
@@ -268,34 +298,36 @@ public class TaskDashboard extends UIPage {
         this.generateTaskBtn.setSprites(GENERATE_TASK_DISABLED_SPRITE_ID);
         this.generateTaskBtn.clearActions();
 
-        this.generateTaskBtn.setName("");
         this.generateTaskBtn.addAction("Disabled", this::playFailSound);
+        updateRerolls();
     }
 
     public void enableGenerateTask() {
         this.generateTaskBtn.clearActions();
         this.generateTaskBtn.setSprites(GENERATE_TASK_SPRITE_ID, GENERATE_TASK_HOVER_SPRITE_ID);
         if (taskService.getRerolls() > 0 && taskService.getActiveTask() != null) {
-            this.generateTaskBtn.setName(taskService.getRerolls() + " remaining");
-            this.generateTaskBtn.addAction("Reroll task", this::generateTask);
+            this.generateTaskBtn.addAction("Right click to re-roll", this::playFailSound);
+            this.generateTaskBtn.addAction("<col=2ecc71>Re-roll task</col>", this::generateTask);
         } else {
-            this.generateTaskBtn.setName("");
             this.generateTaskBtn.addAction("Generate task", this::generateTask);
         }
 
         this.disableCompleteTask();
+        updateRerolls();
     }
 
     public void disableCompleteTask() {
         this.completeTaskBtn.setSprites(COMPLETE_TASK_DISABLED_SPRITE_ID);
         this.completeTaskBtn.clearActions();
         this.completeTaskBtn.addAction("Disabled", this::playFailSound);
+        updateRerolls();
     }
 
     public void enableCompleteTask() {
         this.completeTaskBtn.clearActions();
         this.completeTaskBtn.setSprites(COMPLETE_TASK_SPRITE_ID, COMPLETE_TASK_HOVER_SPRITE_ID);
         this.completeTaskBtn.addAction("Complete", plugin::completeTask);
+        updateRerolls();
     }
 
     public void enableFaqButton() {
@@ -366,10 +398,12 @@ public class TaskDashboard extends UIPage {
         
         // Update percentage completion position - force widget position update
         int percentX = getCenterX(window, COLLECTION_LOG_WINDOW_WIDTH);
-        int percentY = getCenterY(window, DEFAULT_BUTTON_HEIGHT) + 112; // Same Y as FAQ button
+        int percentY = getCenterY(window, DEFAULT_BUTTON_HEIGHT) + 108; // Same Y as FAQ button
         this.percentCompletion.setPosition(percentX, percentY);
         this.percentCompletion.getWidget().setPos(percentX, percentY);
-        
+        this.rerollLabel.setPosition(getCenterX(window, COLLECTION_LOG_WINDOW_WIDTH), percentY + 20);
+        this.rerollLabel.getWidget().setPos(getCenterX(window, COLLECTION_LOG_WINDOW_WIDTH), percentY + 20);
+
         // Force revalidation of all widgets
         this.title.getWidget().revalidate();
         this.taskBg.getWidget().revalidate();
@@ -380,6 +414,7 @@ public class TaskDashboard extends UIPage {
         this.faqBtn.getWidget().revalidate();
         this.syncBtn.getWidget().revalidate();
         this.percentCompletion.getWidget().revalidate();
+        this.rerollLabel.getWidget().revalidate();
     }
 
 	private int getCenterX(Widget window, int width) {
