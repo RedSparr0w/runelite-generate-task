@@ -135,7 +135,7 @@ public class TaskService extends EventBusSubscriber {
         Task activeTask = data.getActiveTask();
         if (activeTask != null) {
             // We only count as a reroll if there is an active task
-            if (this.getRerolls() > 0) {
+            if (config.rerollsEnabled() && this.getRerolls() > 0) {
                 this.setRerolls(getRerolls() - 1);
             } else {
                 log.warn("Tried to generate task when previous one wasn't completed yet, no rerolls left");
@@ -177,8 +177,10 @@ public class TaskService extends EventBusSubscriber {
         Task activeTask = getActiveTask();
         if (activeTask != null && taskId.equals(activeTask.getId())) {
             data.setActiveTask(null);
-            // Reset our rerolls when we complete our active task
-            this.setRerolls(config.rerollsAllowed());
+            // Update our rerolls when we complete our active task
+            if (config.rerollsEnabled()) {
+                this.setRerolls(config.rerollsIncrement() > 0 ? Math.min(this.getRerolls() + config.rerollsIncrement(), config.rerollsMaximum()) : config.rerollsMaximum());
+            }
         }
 
         saveDataStorage.save();

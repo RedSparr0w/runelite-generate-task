@@ -13,6 +13,7 @@ public interface LogMasterConfig extends Config
 
     String PLUGIN_VERSION_KEY = "plugin-version";
     String IS_COMMAND_ENABLED_KEY = "isCommandEnabled";
+    String REROLLS_ENABLED_KEY = "rerollsEnabled";
 
     @Range(
             min = 1000,
@@ -114,13 +115,41 @@ public interface LogMasterConfig extends Config
     String unofficial = "unofficial";
 
     @ConfigItem(
-            keyName = "rerolls",
-            name = "Enable rerolls",
-            description = "Set to 0 to disable. Set this to the amount of rerolls you want to allow. Changes apply after completing your current task.",
+            keyName = REROLLS_ENABLED_KEY,
+            name = "Enable re-rolls",
+            description = "Do you want re-rolls enabled? when enabled, current re-roll count will be set to the increment amount.",
             section = unofficial,
             position = 1
     )
-    default int rerollsAllowed()
+    default boolean rerollsEnabled()
+    {
+        return false;
+    }
+
+    @ConfigItem(
+            keyName = "rerollMaximum",
+            name = "Maximum re-rolls",
+            description = "Maximum amount of re-rolls you can have.",
+            section = unofficial,
+            position = 2
+    )
+    @Range(
+            min = 1,
+            max = 10000
+    )
+    default int rerollsMaximum()
+    {
+        return 3;
+    }
+
+    @ConfigItem(
+            keyName = "rerollIncrement",
+            name = "Re-roll increment",
+            description = "How many re-rolls you want to gain per task completion. Set to 0 to restore to full.",
+            section = unofficial,
+            position = 3
+    )
+    default int rerollsIncrement()
     {
         return 0;
     }
