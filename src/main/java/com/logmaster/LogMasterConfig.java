@@ -116,7 +116,7 @@ public interface LogMasterConfig extends Config
 
     @ConfigItem(
             keyName = REROLLS_ENABLED_KEY,
-            name = "Enable re-rolls",
+            name = "Re-rolls enabled",
             description = "Do you want re-rolls enabled? when enabled, current re-roll count will be set to the increment amount.",
             section = unofficial,
             position = 1
@@ -128,7 +128,7 @@ public interface LogMasterConfig extends Config
 
     @ConfigItem(
             keyName = "rerollMaximum",
-            name = "Maximum re-rolls",
+            name = "Re-rolls maximum",
             description = "Maximum amount of re-rolls you can have.",
             section = unofficial,
             position = 2
