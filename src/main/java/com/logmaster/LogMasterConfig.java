@@ -71,13 +71,24 @@ public interface LogMasterConfig extends Config
     )
     default DynamicTaskImages dynamicTaskImages()
     {
-        return DynamicTaskImages.NONE;
+        return DynamicTaskImages.COMPLETE;
+    }
+
+    @ConfigItem(
+            keyName = "isLMSEnabled",
+            name = "Enable LMS tasks",
+            description = "Whether to include LMS tasks in the list.",
+            position = 7
+    )
+    default boolean isLMSEnabled()
+    {
+        return true;
     }
 
     @ConfigSection(
             name = "!taskman Command",
             description = "Configuration options for the !taskman command",
-            position = 7
+            position = 8
     )
     String command = "command";
 

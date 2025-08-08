@@ -87,7 +87,7 @@ public class TaskmanCommandManager extends EventBusSubscriber {
 
         if (config.isCommandEnabled()) {
             chatCommandManager.registerCommand(COLLECTION_LOG_COMMAND, this::executeCommand);
-            updateServerImmediately();
+            updateServerImmediately(true);
         } else {
             chatCommandManager.unregisterCommand(COLLECTION_LOG_COMMAND);
         }
@@ -101,13 +101,20 @@ public class TaskmanCommandManager extends EventBusSubscriber {
     }
 
     public void updateServer() {
-        log.debug("Scheduling command update; {}", Instant.now());
-        updateDebouncer.debounce(this::updateServerImmediately);
+        updateServer(false);
     }
 
-    public void updateServerImmediately() {
+    public void updateServer(boolean skipReminder) {
+        log.debug("Scheduling command update; {}", Instant.now());
+        updateDebouncer.debounce(() -> updateServerImmediately(skipReminder));
+    }
+
+    public void updateServerImmediately(boolean skipReminder) {
         if (!config.isCommandEnabled()) {
-            remind();
+            if (!skipReminder) {
+                remind();
+            }
+
             return;
         }
 
@@ -118,7 +125,7 @@ public class TaskmanCommandManager extends EventBusSubscriber {
 
         HttpUrl url = baseApiUrl.newBuilder().addPathSegment(rsn).build();
 
-        String taskId = null;
+        String taskId = "complete";
         Task currentTask = taskService.getActiveTask();
         if (currentTask != null) {
             taskId = currentTask.getId();
@@ -175,7 +182,7 @@ public class TaskmanCommandManager extends EventBusSubscriber {
         }
 
         clientThread.invoke(() -> {
-            String msg = "<col=ff392b>Your data hasn't been synchronized with the command server because this feature is disabled."
+            String msg = "<col=ff392b>[Collection Log Master] Your data hasn't been synchronized with the command server because this feature is disabled."
                     + " You can enable it in the plugin config; you can also disable this reminder in the plugin config.";
             client.addChatMessage(ChatMessageType.GAMEMESSAGE, "", msg, "");
             client.playSoundEffect(2277);
